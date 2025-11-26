@@ -514,11 +514,4 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
     </div>
   );
 
-    
-
-
-
-
-
-
-
+}
