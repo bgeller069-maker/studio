@@ -1,0 +1,52 @@
+[
+  {
+    "id": "cat_cash",
+    "name": "Cash & Bank",
+    "bookId": "book_default"
+  },
+  {
+    "id": "cat_capital",
+    "name": "Capital",
+    "bookId": "book_default"
+  },
+  {
+    "id": "cat_party",
+    "name": "Parties",
+    "bookId": "book_default"
+  },
+  {
+    "id": "cat_revenue",
+    "name": "PERSONAL",
+    "bookId": "book_default"
+  },
+  {
+    "id": "cat_equity_book_default",
+    "name": "Equity",
+    "bookId": "book_default"
+  },
+  {
+    "id": "cat_1760484573125",
+    "name": "VC",
+    "bookId": "book_default"
+  },
+  {
+    "id": "cat_1760599855378",
+    "name": "OTHER",
+    "bookId": "book_default"
+  },
+  {
+    "id": "cat_1760637820112",
+    "name": "GOLD AND SILVER",
+    "bookId": "book_default"
+  },
+  {
+    "id": "cat_1760637847923",
+    "name": "RR",
+    "bookId": "book_default"
+  },
+  {
+    "id": "cat_equity_book_1762154750685",
+    "name": "Equity",
+    "bookId": "book_1762154750685"
+  }
+]

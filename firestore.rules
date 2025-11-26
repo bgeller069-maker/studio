@@ -1,0 +1,180 @@
+/**
+ * @fileoverview Firestore Security Rules for LedgerBalance application.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for all data. Each user has a dedicated
+ * data tree under `/users/{userId}`, and all data within this tree (books, transactions, etc.)
+ * is accessible only to that user.
+ *
+ * Data Structure:
+ * All data is nested under /users/{userId}, creating a clear hierarchy:
+ * - /users/{userId} (User profile)
+ * - /users/{userId}/books/{bookId} (Financial books)
+ * - /users/{userId}/books/{bookId}/transactions/{transactionId} (Transactions)
+ * - /users/{userId}/books/{bookId}/accounts/{accountId} (Accounts)
+ * - /users/{userId}/books/{bookId}/transactions/{transactionId}/entries/{transactionEntryId} (Transaction Entries)
+ * - /users/{userId}/books/{bookId}/categories/{categoryId} (Categories)
+ *
+ * Key Security Decisions:
+ * - User listing is disallowed.
+ * - All data is private and requires authentication to access.
+ * - Data validation is relaxed during this prototyping phase, focusing on ownership and
+ *   relational integrity rather than strict schema enforcement.
+ *
+ * Denormalization for Authorization:
+ * To simplify rules, the `userId` is enforced both in the path and as a field within
+ * documents (e.g., a Book document must have a `userId` field that matches the `userId` in
+ * the path `/users/{userId}/books/{bookId}`). This avoids costly `get()` calls in the rules.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Enforces user-ownership for user profiles.
+     * @path /users/{userId}
+     * @allow (create) User with ID 'user123' can create their profile: `request.auth.uid == 'user123'`
+     * @deny (create) User with ID 'user123' cannot create profile for 'otherUser': `request.auth.uid == 'user123' && request.resource.data.id == 'otherUser'`
+     * @allow (get) User with ID 'user123' can read their profile: `request.auth.uid == 'user123'`
+     * @deny (get) User with ID 'user123' cannot read 'otherUser' profile: `request.auth.uid == 'user123'`
+     * @allow (update) User with ID 'user123' can update their profile: `request.auth.uid == 'user123'`
+     * @deny (update) User with ID 'user123' cannot update 'otherUser' profile: `request.auth.uid == 'user123'`
+     * @allow (delete) User with ID 'user123' can delete their profile: `request.auth.uid == 'user123'`
+     * @deny (delete) User with ID 'user123' cannot delete 'otherUser' profile: `request.auth.uid == 'user123'`
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // User listing is not allowed.
+      allow create: if isSignedIn() && isSelfCreation(userId);
+      allow update: if isExistingOwner(userId) && isUserIdNotChangedOnUpdate(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Enforces user-ownership for books.
+     * @path /users/{userId}/books/{bookId}
+     * @allow (create) User 'user123' creates book with userId 'user123': `request.auth.uid == 'user123' && request.resource.data.userId == 'user123'`
+     * @deny (create) User 'user123' creates book with userId 'otherUser': `request.auth.uid == 'user123' && request.resource.data.userId == 'otherUser'`
+     * @allow (get) User 'user123' reads their book: `request.auth.uid == 'user123'`
+     * @deny (get) User 'otherUser' reads 'user123' book: `request.auth.uid == 'otherUser'`
+     * @allow (update) User 'user123' updates their book: `request.auth.uid == 'user123'`
+     * @deny (update) User 'otherUser' updates 'user123' book: `request.auth.uid == 'otherUser'`
+     * @allow (delete) User 'user123' deletes their book: `request.auth.uid == 'user123'`
+     * @deny (delete) User 'otherUser' deletes 'user123' book: `request.auth.uid == 'otherUser'`
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/books/{bookId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && isUserIdNotChangedOnUpdate(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Enforces user-ownership for transactions.
+     * @path /users/{userId}/books/{bookId}/transactions/{transactionId}
+     * @allow (create) User 'user123' creates transaction within their book: `request.auth.uid == 'user123'`
+     * @deny (create) User 'otherUser' creates transaction in 'user123' book: `request.auth.uid == 'otherUser'`
+     * @allow (get) User 'user123' reads their transaction: `request.auth.uid == 'user123'`
+     * @deny (get) User 'otherUser' reads 'user123' transaction: `request.auth.uid == 'otherUser'`
+     * @allow (update) User 'user123' updates their transaction: `request.auth.uid == 'user123'`
+     * @deny (update) User 'otherUser' updates 'user123' transaction: `request.auth.uid == 'otherUser'`
+     * @allow (delete) User 'user123' deletes their transaction: `request.auth.uid == 'user123'`
+     * @deny (delete) User 'otherUser' deletes 'user123' transaction: `request.auth.uid == 'otherUser'`
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/books/{bookId}/transactions/{transactionId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Enforces user-ownership for accounts.
+     * @path /users/{userId}/books/{bookId}/accounts/{accountId}
+     * @allow (create) User 'user123' creates account within their book: `request.auth.uid == 'user123'`
+     * @deny (create) User 'otherUser' creates account in 'user123' book: `request.auth.uid == 'otherUser'`
+     * @allow (get) User 'user123' reads their account: `request.auth.uid == 'user123'`
+     * @deny (get) User 'otherUser' reads 'user123' account: `request.auth.uid == 'otherUser'`
+     * @allow (update) User 'user123' updates their account: `request.auth.uid == 'user123'`
+     * @deny (update) User 'otherUser' updates 'user123' account: `request.auth.uid == 'otherUser'`
+     * @allow (delete) User 'user123' deletes their account: `request.auth.uid == 'user123'`
+     * @deny (delete) User 'otherUser' deletes 'user123' account: `request.auth.uid == 'otherUser'`
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/books/{bookId}/accounts/{accountId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Enforces user-ownership for transaction entries.
+     * @path /users/{userId}/books/{bookId}/transactions/{transactionId}/entries/{transactionEntryId}
+     * @allow (create) User 'user123' creates entry within their transaction: `request.auth.uid == 'user123'`
+     * @deny (create) User 'otherUser' creates entry in 'user123' transaction: `request.auth.uid == 'otherUser'`
+     * @allow (get) User 'user123' reads their transaction entry: `request.auth.uid == 'user123'`
+     * @deny (get) User 'otherUser' reads 'user123' transaction entry: `request.auth.uid == 'otherUser'`
+     * @allow (update) User 'user123' updates their transaction entry: `request.auth.uid == 'user123'`
+     * @deny (update) User 'otherUser' updates 'user123' transaction entry: `request.auth.uid == 'otherUser'`
+     * @allow (delete) User 'user123' deletes their transaction entry: `request.auth.uid == 'user123'`
+     * @deny (delete) User 'otherUser' deletes 'user123' transaction entry: `request.auth.uid == 'otherUser'`
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/books/{bookId}/transactions/{transactionId}/entries/{transactionEntryId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Enforces user-ownership for categories.
+     * @path /users/{userId}/books/{bookId}/categories/{categoryId}
+     * @allow (create) User 'user123' creates category within their book: `request.auth.uid == 'user123'`
+     * @deny (create) User 'otherUser' creates category in 'user123' book: `request.auth.uid == 'otherUser'`
+     * @allow (get) User 'user123' reads their category: `request.auth.uid == 'user123'`
+     * @deny (get) User 'otherUser' reads 'user123' category: `request.auth.uid == 'otherUser'`
+     * @allow (update) User 'user123' updates their category: `request.auth.uid == 'user123'`
+     * @deny (update) User 'otherUser' updates 'user123' category: `request.auth.uid == 'otherUser'`
+     * @allow (delete) User 'user123' deletes their category: `request.auth.uid == 'user123'`
+     * @deny (delete) User 'otherUser' deletes 'user123' category: `request.auth.uid == 'otherUser'`
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId}/books/{bookId}/categories/{categoryId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+
+  // Helper functions
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  function isOwner(userId) {
+    return request.auth.uid == userId;
+  }
+
+  function isExistingOwner(userId) {
+    return isOwner(userId) && resource != null;
+  }
+
+  function isSelfCreation(userId) {
+      return isSignedIn() && request.auth.uid == userId && request.resource.data.id == userId;
+  }
+
+  function isUserIdNotChangedOnUpdate(userId) {
+    return resource.data.userId == userId;
+  }
+}

@@ -1,0 +1,364 @@
+[
+  {
+    "id": "acc_1760484492379",
+    "bookId": "book_default",
+    "name": "Cash",
+    "categoryId": "cat_cash",
+    "openingBalance": 6128710,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_opening_balance_equity_book_default",
+    "name": "Opening Balance Equity",
+    "categoryId": "cat_equity_book_default",
+    "bookId": "book_default"
+  },
+  {
+    "id": "acc_1760484514093",
+    "bookId": "book_default",
+    "name": "HM",
+    "categoryId": "cat_capital",
+    "openingBalance": 0,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_1760484541813",
+    "bookId": "book_default",
+    "name": "Mahesh",
+    "categoryId": "cat_party",
+    "openingBalance": 9116662,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_1760484818334",
+    "bookId": "book_default",
+    "name": "Pintu mama",
+    "categoryId": "cat_party",
+    "openingBalance": 954500,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_1760484836865",
+    "bookId": "book_default",
+    "name": "Cherub",
+    "categoryId": "cat_party",
+    "openingBalance": 1000000,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_1760484862841",
+    "bookId": "book_default",
+    "name": "Yash surat",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1760484974343",
+    "bookId": "book_default",
+    "name": "Ankit vc",
+    "categoryId": "cat_1760484573125"
+  },
+  {
+    "id": "acc_1760484993171",
+    "bookId": "book_default",
+    "name": "Nirmal mama",
+    "categoryId": "cat_1760484573125",
+    "openingBalance": 2180000,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_1760485009135",
+    "bookId": "book_default",
+    "name": "Prannav",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1760485093510",
+    "bookId": "book_default",
+    "name": "Kalyani",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1760488594039",
+    "bookId": "book_default",
+    "name": "GVC",
+    "categoryId": "cat_1760484573125"
+  },
+  {
+    "id": "acc_1760488637515",
+    "bookId": "book_default",
+    "name": "SGR",
+    "categoryId": "cat_1760484573125",
+    "openingBalance": 0,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_1760488655931",
+    "bookId": "book_default",
+    "name": "NEX",
+    "categoryId": "cat_1760484573125"
+  },
+  {
+    "id": "acc_1760488663682",
+    "bookId": "book_default",
+    "name": "PH",
+    "categoryId": "cat_1760484573125"
+  },
+  {
+    "id": "acc_1760488673265",
+    "bookId": "book_default",
+    "name": "LAB",
+    "categoryId": "cat_1760484573125",
+    "openingBalance": 121100,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_1760599914987",
+    "bookId": "book_default",
+    "name": "MGA",
+    "categoryId": "cat_1760599855378",
+    "openingBalance": 21000,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_1760638091956",
+    "bookId": "book_default",
+    "name": "ABHI",
+    "categoryId": "cat_revenue"
+  },
+  {
+    "id": "acc_1760638196154",
+    "bookId": "book_default",
+    "name": "VICKY",
+    "categoryId": "cat_party",
+    "openingBalance": 23492,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_1760641123333",
+    "bookId": "book_default",
+    "name": "KAMAL",
+    "categoryId": "cat_1760637847923"
+  },
+  {
+    "id": "acc_1760699692920",
+    "bookId": "book_default",
+    "name": "LKD",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1760699799533",
+    "bookId": "book_default",
+    "name": "Profit",
+    "categoryId": "cat_1760637820112"
+  },
+  {
+    "id": "acc_1760758698028",
+    "bookId": "book_default",
+    "name": "BHU",
+    "categoryId": "cat_1760637847923",
+    "openingBalance": 2000000,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_1760759179925",
+    "bookId": "book_default",
+    "name": "HMTA(NM)",
+    "categoryId": "cat_1760637847923",
+    "openingBalance": 5285881,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_1760759903192",
+    "bookId": "book_default",
+    "name": "RR",
+    "categoryId": "cat_1760637847923",
+    "openingBalance": 10000000,
+    "openingBalanceType": "credit"
+  },
+  {
+    "id": "acc_1760797593804",
+    "bookId": "book_default",
+    "name": "POOJA",
+    "categoryId": "cat_1760637820112",
+    "openingBalance": 169390,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_1761135513936",
+    "bookId": "book_default",
+    "name": "SUB",
+    "categoryId": "cat_party",
+    "openingBalance": 556500,
+    "openingBalanceType": "debit"
+  },
+  {
+    "id": "acc_1761135759679",
+    "bookId": "book_default",
+    "name": "BG",
+    "categoryId": "cat_1760599855378"
+  },
+  {
+    "id": "acc_1761136137802",
+    "bookId": "book_default",
+    "name": "Personal",
+    "categoryId": "cat_revenue"
+  },
+  {
+    "id": "acc_1761136538099",
+    "bookId": "book_default",
+    "name": "Pintu Mama Plot",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1761175532808",
+    "bookId": "book_default",
+    "name": "PRASHANT",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1761177044812",
+    "bookId": "book_default",
+    "name": "Ab Piyush",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1761179502400",
+    "bookId": "book_default",
+    "name": "INTREST",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1761179833281",
+    "bookId": "book_default",
+    "name": "Vicky Manoj Telicom",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1761181480507",
+    "bookId": "book_default",
+    "name": "Sumit Surya",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1761181678183",
+    "bookId": "book_default",
+    "name": "Minesh Suresh ji",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1761181697067",
+    "bookId": "book_default",
+    "name": "Sunil Lions",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1761226898210",
+    "bookId": "book_default",
+    "name": "GOLD STOCK",
+    "categoryId": "cat_1760637820112"
+  },
+  {
+    "id": "acc_1761227443314",
+    "bookId": "book_default",
+    "name": "DJ",
+    "categoryId": "cat_1760637847923"
+  },
+  {
+    "id": "acc_1762010937611",
+    "bookId": "book_default",
+    "name": "ALMERA",
+    "categoryId": "cat_revenue"
+  },
+  {
+    "id": "acc_1762149613596",
+    "bookId": "book_default",
+    "name": "DINESH PUFASA",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_opening_balance_equity_book_1762154750685",
+    "name": "Opening Balance Equity",
+    "categoryId": "cat_equity_book_1762154750685",
+    "bookId": "book_1762154750685"
+  },
+  {
+    "id": "acc_1762156836288",
+    "bookId": "book_default",
+    "name": "MTV",
+    "categoryId": "cat_1760484573125"
+  },
+  {
+    "id": "acc_1762156845760",
+    "bookId": "book_default",
+    "name": "NKB",
+    "categoryId": "cat_1760484573125"
+  },
+  {
+    "id": "acc_1762157123220",
+    "bookId": "book_default",
+    "name": "NS",
+    "categoryId": "cat_1760484573125"
+  },
+  {
+    "id": "acc_1762366052658",
+    "bookId": "book_default",
+    "name": "MOHIT JWELL",
+    "categoryId": "cat_1760637820112"
+  },
+  {
+    "id": "acc_1762369033001",
+    "bookId": "book_default",
+    "name": "NEERAJ JI VC",
+    "categoryId": "cat_1760484573125"
+  },
+  {
+    "id": "acc_1762369865703",
+    "bookId": "book_default",
+    "name": "NEERAJ JI MTV",
+    "categoryId": "cat_1760484573125"
+  },
+  {
+    "id": "acc_1762421624846",
+    "bookId": "book_default",
+    "name": "NS13",
+    "categoryId": "cat_1760637847923"
+  },
+  {
+    "id": "acc_1762928966016",
+    "bookId": "book_default",
+    "name": "VC",
+    "categoryId": "cat_1760484573125"
+  },
+  {
+    "id": "acc_1762934632102",
+    "bookId": "book_default",
+    "name": "SALMA",
+    "categoryId": "cat_cash"
+  },
+  {
+    "id": "acc_1763049552514",
+    "bookId": "book_default",
+    "name": "MOHIT",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1763050534838",
+    "bookId": "book_default",
+    "name": "AKHILESH MAMA",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1763215911855",
+    "bookId": "book_default",
+    "name": "Bharat Paliwal",
+    "categoryId": "cat_party"
+  },
+  {
+    "id": "acc_1763363671757",
+    "bookId": "book_default",
+    "name": "RM",
+    "categoryId": "cat_1760637820112",
+    "openingBalance": 1215000,
+    "openingBalanceType": "credit"
+  }
+]

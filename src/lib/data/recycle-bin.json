@@ -1,0 +1,254 @@
+[
+  {
+    "description": "Cash from bhu to hm",
+    "date": "2025-10-27T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484514093",
+        "type": "debit",
+        "amount": 1500000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760758698028",
+        "type": "credit",
+        "amount": 1500000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1761756436948",
+    "bookId": "book_default",
+    "type": "transaction",
+    "deletedAt": "2025-11-04T12:06:07.060Z"
+  },
+  {
+    "id": "acc_1761420461858",
+    "bookId": "book_default",
+    "name": "RU",
+    "categoryId": "cat_party",
+    "categoryName": "Unknown",
+    "type": "account",
+    "deletedAt": "2025-10-29T18:00:47.930Z"
+  },
+  {
+    "date": "2025-10-25T19:27:41.859Z",
+    "description": "Opening Balance for RU",
+    "entries": [
+      {
+        "accountId": "acc_1761420461858",
+        "amount": 2500,
+        "type": "debit"
+      },
+      {
+        "accountId": "acc_opening_balance_equity_book_default",
+        "amount": 2500,
+        "type": "credit"
+      }
+    ],
+    "id": "txn_1761420461860",
+    "bookId": "book_default",
+    "type": "transaction",
+    "deletedAt": "2025-10-29T18:00:47.924Z"
+  },
+  {
+    "description": "Test",
+    "date": "2025-10-29T17:58:14.930Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484492379",
+        "type": "debit",
+        "amount": 5500,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484514093",
+        "type": "credit",
+        "amount": 5500,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1761760713144",
+    "bookId": "book_default",
+    "type": "transaction",
+    "deletedAt": "2025-10-29T18:00:36.567Z"
+  },
+  {
+    "id": "book_1761719305531",
+    "name": "NENE",
+    "type": "book",
+    "deletedAt": "2025-10-29T06:28:46.200Z"
+  },
+  {
+    "id": "acc_opening_balance_equity_book_1761719305531",
+    "name": "Opening Balance Equity",
+    "categoryId": "cat_equity_book_1761719305531",
+    "bookId": "book_1761719305531",
+    "type": "account",
+    "deletedAt": "2025-10-29T06:28:46.200Z"
+  },
+  {
+    "id": "cat_equity_book_1761719305531",
+    "name": "Equity",
+    "bookId": "book_1761719305531",
+    "type": "category",
+    "deletedAt": "2025-10-29T06:28:46.200Z"
+  },
+  {
+    "id": "book_1761718886159",
+    "name": "NEW 2",
+    "type": "book",
+    "deletedAt": "2025-10-29T06:28:43.550Z"
+  },
+  {
+    "id": "acc_opening_balance_equity_book_1761718886159",
+    "name": "Opening Balance Equity",
+    "categoryId": "cat_equity_book_1761718886159",
+    "bookId": "book_1761718886159",
+    "type": "account",
+    "deletedAt": "2025-10-29T06:28:43.550Z"
+  },
+  {
+    "id": "cat_equity_book_1761718886159",
+    "name": "Equity",
+    "bookId": "book_1761718886159",
+    "type": "category",
+    "deletedAt": "2025-10-29T06:28:43.550Z"
+  },
+  {
+    "id": "book_1760481482686",
+    "name": "BGS",
+    "type": "book",
+    "deletedAt": "2025-10-29T06:21:21.179Z"
+  },
+  {
+    "description": "REC FROM BHU YO SUPERSALES TO HM",
+    "date": "2025-10-29T06:10:33.812Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484514093",
+        "type": "debit",
+        "amount": 1500000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760758698028",
+        "type": "credit",
+        "amount": 1500000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1761718263882",
+    "bookId": "book_1760481482686",
+    "type": "transaction",
+    "deletedAt": "2025-10-29T06:21:21.179Z"
+  },
+  {
+    "id": "cat_bg_cash",
+    "name": "BG Cash Accounts",
+    "bookId": "book_1760481482686",
+    "type": "category",
+    "deletedAt": "2025-10-29T06:21:21.179Z"
+  },
+  {
+    "id": "cat_bg_main",
+    "name": "BG Main",
+    "bookId": "book_1760481482686",
+    "type": "category",
+    "deletedAt": "2025-10-29T06:21:21.179Z"
+  },
+  {
+    "id": "cat_bg_clients",
+    "name": "BG Clients",
+    "bookId": "book_1760481482686",
+    "type": "category",
+    "deletedAt": "2025-10-29T06:21:21.179Z"
+  },
+  {
+    "description": "Ronak ne diye",
+    "date": "2025-10-26T05:53:00.039Z",
+    "entries": [
+      {
+        "accountId": "acc_1761420461858",
+        "type": "debit",
+        "amount": 2500,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760759903192",
+        "type": "credit",
+        "amount": 2500,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1761458013918",
+    "bookId": "book_default",
+    "type": "transaction",
+    "deletedAt": "2025-10-28T17:56:06.373Z"
+  },
+  {
+    "description": "",
+    "date": "2025-10-25T19:20:50.631Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484492379",
+        "type": "debit",
+        "amount": 50000,
+        "description": "REC FROM"
+      },
+      {
+        "accountId": "acc_1760758698028",
+        "type": "credit",
+        "amount": 100000,
+        "description": "CASH REC"
+      },
+      {
+        "accountId": "acc_1760484514093",
+        "type": "debit",
+        "amount": 50000,
+        "description": "BHU SE AYE"
+      }
+    ],
+    "useSeparateNarration": true,
+    "id": "txn_1761420123757",
+    "bookId": "book_default",
+    "type": "transaction",
+    "deletedAt": "2025-10-25T19:26:28.962Z"
+  },
+  {
+    "description": "Demo",
+    "date": "2025-10-23T01:08:26.442Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484541813",
+        "type": "debit",
+        "amount": 1777,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484492379",
+        "type": "credit",
+        "amount": 1777,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1761181720907",
+    "bookId": "book_default",
+    "type": "transaction",
+    "deletedAt": "2025-10-23T01:08:49.111Z"
+  },
+  {
+    "id": "acc_1761179212120",
+    "bookId": "book_default",
+    "name": "Intrest ",
+    "categoryId": "cat_equity_book_default",
+    "openingBalance": 0,
+    "openingBalanceType": "debit",
+    "type": "account",
+    "deletedAt": "2025-10-23T00:31:27.315Z"
+  }
+]

@@ -1,0 +1,382 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the LedgerBalance application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "googleId": {
+          "type": "string",
+          "description": "User's Google ID (if using Google login)."
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
+    },
+    "Book": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Book",
+      "type": "object",
+      "description": "Represents a financial book (ledger) owned by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the book."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Book)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the book."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the book."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name"
+      ]
+    },
+    "Transaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Transaction",
+      "type": "object",
+      "description": "Represents a financial transaction.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the transaction."
+        },
+        "bookId": {
+          "type": "string",
+          "description": "Reference to Book. (Relationship: Book 1:N Transaction)"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the transaction.",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the transaction."
+        }
+      },
+      "required": [
+        "id",
+        "bookId",
+        "date"
+      ]
+    },
+    "Account": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Account",
+      "type": "object",
+      "description": "Represents a financial account (e.g., Cash, Bank, Accounts Receivable).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the account."
+        },
+        "bookId": {
+          "type": "string",
+          "description": "Reference to Book. (Relationship: Book 1:N Account)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the account."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the account (e.g., Asset, Liability, Equity, Revenue, Expense)."
+        }
+      },
+      "required": [
+        "id",
+        "bookId",
+        "name",
+        "category"
+      ]
+    },
+    "TransactionEntry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TransactionEntry",
+      "type": "object",
+      "description": "Represents a single entry (debit or credit) within a transaction.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the transaction entry."
+        },
+        "transactionId": {
+          "type": "string",
+          "description": "Reference to Transaction. (Relationship: Transaction 1:N TransactionEntry)"
+        },
+        "accountId": {
+          "type": "string",
+          "description": "Reference to Account. (Relationship: Account 1:N TransactionEntry)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount of the entry (debit or credit)."
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of the entry (Debit or Credit)."
+        }
+      },
+      "required": [
+        "id",
+        "transactionId",
+        "accountId",
+        "amount",
+        "type"
+      ]
+    },
+    "Category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
+      "type": "object",
+      "description": "Represents a category for grouping accounts (e.g., Cash, Capital, Party).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the category."
+        },
+        "bookId": {
+          "type": "string",
+          "description": "Reference to Book. (Relationship: Book 1:N Category)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the category."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the category."
+        }
+      },
+      "required": [
+        "id",
+        "bookId",
+        "name"
+      ]
+    },
+    "Note": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Note",
+      "type": "object",
+      "description": "Represents a single note or to-do item for a book.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the note."
+        },
+        "bookId": {
+          "type": "string",
+          "description": "Reference to Book. (Relationship: Book 1:N Note)"
+        },
+        "text": {
+          "type": "string",
+          "description": "The content of the note."
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Whether the note is completed (for checklists)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time the note was created."
+        }
+      },
+      "required": ["id", "bookId", "text", "isCompleted", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles.  Authorization is based on `request.auth.uid == userId`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/books/{bookId}",
+        "definition": {
+          "entityName": "Book",
+          "schema": {
+            "$ref": "#/backend/entities/Book"
+          },
+          "description": "Stores financial books owned by a user. Authorization is based on `request.auth.uid == userId`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "bookId",
+              "description": "The unique identifier for the book."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/books/{bookId}/transactions/{transactionId}",
+        "definition": {
+          "entityName": "Transaction",
+          "schema": {
+            "$ref": "#/backend/entities/Transaction"
+          },
+          "description": "Stores transactions within a book. Authorization is based on `request.auth.uid == userId`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "bookId",
+              "description": "The unique identifier for the book."
+            },
+            {
+              "name": "transactionId",
+              "description": "The unique identifier for the transaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/books/{bookId}/accounts/{accountId}",
+        "definition": {
+          "entityName": "Account",
+          "schema": {
+            "$ref": "#/backend/entities/Account"
+          },
+          "description": "Stores accounts within a book. Authorization is based on `request.auth.uid == userId`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "bookId",
+              "description": "The unique identifier for the book."
+            },
+            {
+              "name": "accountId",
+              "description": "The unique identifier for the account."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/books/{bookId}/transactions/{transactionId}/entries/{transactionEntryId}",
+        "definition": {
+          "entityName": "TransactionEntry",
+          "schema": {
+            "$ref": "#/backend/entities/TransactionEntry"
+          },
+          "description": "Stores transaction entries within a transaction. Authorization is based on `request.auth.uid == userId`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "bookId",
+              "description": "The unique identifier for the book."
+            },
+            {
+              "name": "transactionId",
+              "description": "The unique identifier for the transaction."
+            },
+            {
+              "name": "transactionEntryId",
+              "description": "The unique identifier for the transaction entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/books/{bookId}/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Stores categories within a book. Authorization is based on `request.auth.uid == userId`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "bookId",
+              "description": "The unique identifier for the book."
+            },
+            {
+              "name": "categoryId",
+              "description": "The unique identifier for the category."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/books/{bookId}/notes/{noteId}",
+        "definition": {
+            "entityName": "Note",
+            "schema": {
+                "$ref": "#/backend/entities/Note"
+            },
+            "description": "Stores notes for a specific book. Authorization is based on `request.auth.uid == userId`.",
+            "params": [
+                {
+                    "name": "userId",
+                    "description": "The unique identifier for the user."
+                },
+                {
+                    "name": "bookId",
+                    "description": "The unique identifier for the book."
+                },
+                {
+                    "name": "noteId",
+                    "description": "The unique identifier for the note."
+                }
+            ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support a double-entry accounting application (LedgerBalance) with a focus on user-owned data and clear authorization. User data is stored under `/users/{userId}`.  Books, which represent ledgers, are stored under `/users/{userId}/books/{bookId}`, establishing a clear ownership hierarchy. Transactions, Accounts, TransactionEntries and Categories all follow a similar hierarchical structure, residing as subcollections of `/users/{userId}/books/{bookId}`. A new `notes` collection has been added under books to store user-specific notes that can sync across devices. This structure enables path-based security rules based on user ID. This provides Authorization Independence as access control is implied by the document path. QAPs are supported through structural segregation based on user ownership."
+  }
+}
