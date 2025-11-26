@@ -4,6 +4,20 @@ import { Toaster } from "@/components/ui/toaster";
 import { getBooks } from '@/lib/data';
 import { BookProvider } from '@/context/BookContext';
 import Header from '@/components/layout/Header';
+import { Inter, Playfair_Display } from 'next/font/google';
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-body',
+});
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['700'],
+  display: 'swap',
+  variable: '--font-headline',
+});
 
 
 export const metadata: Metadata = {
@@ -20,11 +34,8 @@ export default async function RootLayout({
   const initialBooks = await getBooks();
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${playfair.variable}`}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
         <meta name="theme-color" content="#000000" />
       </head>
       <body className="font-body antialiased">

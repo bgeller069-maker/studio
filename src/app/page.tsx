@@ -4,7 +4,8 @@ import { cookies } from 'next/headers';
 import Header from '@/components/layout/Header';
 
 export default async function Home() {
-  const activeBookId = cookies().get('activeBookId')?.value || 'book_default';
+  const cookieStore = await cookies();
+  const activeBookId = cookieStore.get('activeBookId')?.value || 'book_default';
 
   const [initialTransactions, accounts, categories] = await Promise.all([
     getTransactions(activeBookId),

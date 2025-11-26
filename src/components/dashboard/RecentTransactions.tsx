@@ -26,7 +26,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { useTransition, useState, useMemo, useEffect } from 'react';
+import { useTransition, useState, useMemo, useEffect, useCallback } from 'react';
 import { deleteTransactionAction, updateTransactionHighlightAction, deleteMultipleTransactionsAction } from '@/app/actions';
 import { Input } from '../ui/input';
 import Link from 'next/link';
@@ -61,7 +61,10 @@ const highlightClasses: Record<HighlightColor, string> = {
 
 
 export default function RecentTransactions({ transactions: initialTransactions, accounts, categories }: RecentTransactionsProps) {
-  const getAccountName = (accountId: string) => accounts.find(a => a.id === accountId)?.name || 'Unknown Account';
+  const getAccountName = useCallback(
+    (accountId: string) => accounts.find(a => a.id === accountId)?.name || 'Unknown Account',
+    [accounts]
+  );
   const pathname = usePathname();
   const isTransactionsPage = pathname === '/transactions';
 
@@ -237,7 +240,7 @@ export default function RecentTransactions({ transactions: initialTransactions, 
         return { transactions: sorted.slice(0, 5), openingBalanceTransactions: [] };
     }
     return { transactions: sorted, openingBalanceTransactions: opening };
-  }, [initialTransactions, isTransactionsPage, searchTerm, sortDescriptor, dateRangePreset, customDateRange]);
+  }, [initialTransactions, isTransactionsPage, searchTerm, sortDescriptor, dateRangePreset, customDateRange, getAccountName]);
 
   const handleSelect = (transactionId: string, checked: boolean) => {
     if(checked) {

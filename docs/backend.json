@@ -211,172 +211,105 @@
   },
   "auth": {
     "providers": [
-      "google.com"
+      "email",
+      "google"
     ]
   },
-  "firestore": {
-    "structure": [
+  "supabase": {
+    "tables": [
       {
-        "path": "/users/{userId}",
+        "name": "users",
         "definition": {
           "entityName": "User",
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profiles.  Authorization is based on `request.auth.uid == userId`.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            }
+          "description": "Stores user profiles keyed by auth.user_id.",
+          "policies": [
+            "Users can select/update their own row (auth.uid() = id)",
+            "Insert is limited to service role or a signup trigger"
           ]
         }
       },
       {
-        "path": "/users/{userId}/books/{bookId}",
+        "name": "books",
         "definition": {
           "entityName": "Book",
           "schema": {
             "$ref": "#/backend/entities/Book"
           },
-          "description": "Stores financial books owned by a user. Authorization is based on `request.auth.uid == userId`.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "bookId",
-              "description": "The unique identifier for the book."
-            }
+          "description": "Financial ledgers owned by a user.",
+          "policies": [
+            "auth.uid() = user_id for select/insert/update/delete"
           ]
         }
       },
       {
-        "path": "/users/{userId}/books/{bookId}/transactions/{transactionId}",
-        "definition": {
-          "entityName": "Transaction",
-          "schema": {
-            "$ref": "#/backend/entities/Transaction"
-          },
-          "description": "Stores transactions within a book. Authorization is based on `request.auth.uid == userId`.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "bookId",
-              "description": "The unique identifier for the book."
-            },
-            {
-              "name": "transactionId",
-              "description": "The unique identifier for the transaction."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/books/{bookId}/accounts/{accountId}",
+        "name": "accounts",
         "definition": {
           "entityName": "Account",
           "schema": {
             "$ref": "#/backend/entities/Account"
           },
-          "description": "Stores accounts within a book. Authorization is based on `request.auth.uid == userId`.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "bookId",
-              "description": "The unique identifier for the book."
-            },
-            {
-              "name": "accountId",
-              "description": "The unique identifier for the account."
-            }
+          "description": "Accounts that belong to a specific book.",
+          "policies": [
+            "Join against books.user_id to enforce ownership"
           ]
         }
       },
       {
-        "path": "/users/{userId}/books/{bookId}/transactions/{transactionId}/entries/{transactionEntryId}",
+        "name": "transactions",
+        "definition": {
+          "entityName": "Transaction",
+          "schema": {
+            "$ref": "#/backend/entities/Transaction"
+          },
+          "description": "Parent records for each ledger entry.",
+          "policies": [
+            "auth.uid() must match the owning book's user_id"
+          ]
+        }
+      },
+      {
+        "name": "transaction_entries",
         "definition": {
           "entityName": "TransactionEntry",
           "schema": {
             "$ref": "#/backend/entities/TransactionEntry"
           },
-          "description": "Stores transaction entries within a transaction. Authorization is based on `request.auth.uid == userId`.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "bookId",
-              "description": "The unique identifier for the book."
-            },
-            {
-              "name": "transactionId",
-              "description": "The unique identifier for the transaction."
-            },
-            {
-              "name": "transactionEntryId",
-              "description": "The unique identifier for the transaction entry."
-            }
+          "description": "Debit/credit rows tied to a transaction.",
+          "policies": [
+            "auth.uid() must match the owning book's user_id"
           ]
         }
       },
       {
-        "path": "/users/{userId}/books/{bookId}/categories/{categoryId}",
+        "name": "categories",
         "definition": {
           "entityName": "Category",
           "schema": {
             "$ref": "#/backend/entities/Category"
           },
-          "description": "Stores categories within a book. Authorization is based on `request.auth.uid == userId`.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "bookId",
-              "description": "The unique identifier for the book."
-            },
-            {
-              "name": "categoryId",
-              "description": "The unique identifier for the category."
-            }
+          "description": "User-defined groupings for accounts.",
+          "policies": [
+            "auth.uid() must match the owning book's user_id"
           ]
         }
       },
       {
-        "path": "/users/{userId}/books/{bookId}/notes/{noteId}",
+        "name": "notes",
         "definition": {
-            "entityName": "Note",
-            "schema": {
-                "$ref": "#/backend/entities/Note"
-            },
-            "description": "Stores notes for a specific book. Authorization is based on `request.auth.uid == userId`.",
-            "params": [
-                {
-                    "name": "userId",
-                    "description": "The unique identifier for the user."
-                },
-                {
-                    "name": "bookId",
-                    "description": "The unique identifier for the book."
-                },
-                {
-                    "name": "noteId",
-                    "description": "The unique identifier for the note."
-                }
-            ]
+          "entityName": "Note",
+          "schema": {
+            "$ref": "#/backend/entities/Note"
+          },
+          "description": "Sticky notes/todos scoped to a book.",
+          "policies": [
+            "auth.uid() must match the owning book's user_id"
+          ]
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support a double-entry accounting application (LedgerBalance) with a focus on user-owned data and clear authorization. User data is stored under `/users/{userId}`.  Books, which represent ledgers, are stored under `/users/{userId}/books/{bookId}`, establishing a clear ownership hierarchy. Transactions, Accounts, TransactionEntries and Categories all follow a similar hierarchical structure, residing as subcollections of `/users/{userId}/books/{bookId}`. A new `notes` collection has been added under books to store user-specific notes that can sync across devices. This structure enables path-based security rules based on user ID. This provides Authorization Independence as access control is implied by the document path. QAPs are supported through structural segregation based on user ownership."
+    "reasoning": "Supabase Postgres tables replace the previous Firestore hierarchy. Each table contains a user_id column (directly or via a reference to books) so row-level security can enforce ownership with `auth.uid()`. This mirrors the prior authorization model while leveraging SQL relations."
   }
 }

@@ -1,592 +1,834 @@
+import { randomUUID } from 'node:crypto';
 
-import type { Account, Category, Transaction, Book, Note } from '@/lib/types';
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-// This file contains functions to read and write data from the local filesystem.
-// It is intended to be used only on the server side.
+import type { Account, Book, Category, Note, Transaction, TransactionEntry } from '@/lib/types';
+import { getSupabaseServerClient } from '@/lib/supabase';
 
-const dataDir = path.join(process.cwd(), 'src', 'lib', 'data');
+const DEFAULT_BOOK_ID = 'book_default';
+const DEFAULT_BOOK_NAME = 'CASHBOOK';
+const EQUITY_CATEGORY_NAME = 'Equity';
 
-const booksFilePath = path.join(dataDir, 'books.json');
-const categoriesFilePath = path.join(dataDir, 'categories.json');
-const accountsFilePath = path.join(dataDir, 'accounts.json');
-const transactionsFilePath = path.join(dataDir, 'transactions.json');
-const recycleBinFilePath = path.join(dataDir, 'recycle-bin.json');
-const notesFilePath = path.join(dataDir, 'notes.json');
-
-
-const readData = async <T>(filePath: string): Promise<T[]> => {
-  try {
-    await fs.access(filePath);
-    const jsonString = await fs.readFile(filePath, 'utf8');
-    if (!jsonString) {
-        return [];
-    }
-    return JSON.parse(jsonString) as T[];
-  } catch (error: any) {
-    if (error.code === 'ENOENT') { // File does not exist
-        await fs.writeFile(filePath, '[]', 'utf8');
-        return [];
-    }
-    console.error(`Error reading ${filePath}:`, error);
-    return [];
-  }
+type DbBookRow = { id: string; name: string };
+type DbCategoryRow = { id: string; name: string; book_id: string };
+type DbAccountRow = {
+  id: string;
+  name: string;
+  category_id: string;
+  book_id: string;
+  opening_balance: number | null;
+  opening_balance_type: 'debit' | 'credit' | null;
 };
-
-const writeData = async <T>(filePath: string, data: T[]): Promise<void> => {
-  try {
-    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
-  } catch (error) {
-    console.error(`Error writing to ${filePath}:`, error);
-  }
+type DbTransactionRow = {
+  id: string;
+  book_id: string;
+  date: string;
+  description: string;
+  highlight: Transaction['highlight'] | null;
 };
-
-export const getRecycleBinItems = async (): Promise<any[]> => {
-    const items = await readData<any>(recycleBinFilePath);
-    return items.sort((a,b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime());
+type DbTransactionEntryRow = {
+  id: string;
+  transaction_id: string;
+  account_id: string;
+  amount: number;
+  type: TransactionEntry['type'];
+  description: string | null;
 };
+type DbTransactionWithEntries = DbTransactionRow & { entries: DbTransactionEntryRow[] | null };
+type DbNoteRow = { id: string; book_id: string; text: string; is_completed: boolean; created_at: string };
+type DbRecycleBinRow = { id: string; entity_id: string; entity_type: string; payload: any; deleted_at: string };
 
-export const addToRecycleBin = async (item: any | any[]) => {
-    const bin = await readData<any>(recycleBinFilePath);
-    const itemsToAdd = Array.isArray(item) ? item : [item];
-    
-    itemsToAdd.forEach(i => {
-        i.deletedAt = new Date().toISOString();
-    });
+type BinItem = { id: string; type: 'transaction' | 'account' | 'category' | 'book'; deletedAt?: string; [key: string]: any };
 
-    const newBin = [...itemsToAdd, ...bin];
-    await writeData<any>(recycleBinFilePath, newBin);
-}
+const createClient = async (): Promise<SupabaseClient> => getSupabaseServerClient();
+const generateId = (prefix: string) => `${prefix}_${randomUUID()}`;
 
-// --- Recycle Bin Actions ---
-export const restoreItem = async (item: any): Promise<void> => {
-    let allItems: any[];
-    let filePath: string;
+const mapBook = (row: DbBookRow): Book => ({ id: row.id, name: row.name });
+const mapCategory = (row: DbCategoryRow): Category => ({ id: row.id, name: row.name, bookId: row.book_id });
+const mapAccount = (row: DbAccountRow): Account => ({
+  id: row.id,
+  name: row.name,
+  categoryId: row.category_id,
+  bookId: row.book_id,
+  openingBalance: row.opening_balance ?? undefined,
+  openingBalanceType: row.opening_balance_type ?? undefined,
+});
+const mapTransactionEntry = (row: DbTransactionEntryRow): TransactionEntry => ({
+  accountId: row.account_id,
+  amount: Number(row.amount),
+  type: row.type,
+  description: row.description ?? undefined,
+});
+const mapTransaction = (row: DbTransactionWithEntries): Transaction => ({
+  id: row.id,
+  bookId: row.book_id,
+  date: row.date,
+  description: row.description,
+  highlight: row.highlight ?? undefined,
+  entries: (row.entries ?? []).map(mapTransactionEntry),
+});
+const mapNote = (row: DbNoteRow): Note => ({
+  id: row.id,
+  bookId: row.book_id,
+  text: row.text,
+  isCompleted: row.is_completed,
+  createdAt: row.created_at,
+});
 
-    switch (item.type) {
-        case 'account':
-            filePath = accountsFilePath;
-            allItems = await readData<Account>(filePath);
-            break;
-        case 'transaction':
-            filePath = transactionsFilePath;
-            allItems = await readData<Transaction>(filePath);
-            break;
-        case 'category':
-            filePath = categoriesFilePath;
-            allItems = await readData<Category>(filePath);
-            break;
-        case 'book':
-            filePath = booksFilePath;
-            allItems = await readData<Book>(filePath);
-            break;
-        default:
-            throw new Error(`Unknown item type for restore: ${item.type}`);
-    }
+const DEFAULT_CATEGORY_SEEDS: DbCategoryRow[] = [
+  { id: `cat_equity_${DEFAULT_BOOK_ID}`, name: EQUITY_CATEGORY_NAME, book_id: DEFAULT_BOOK_ID },
+  { id: 'cat_cash_default', name: 'Cash', book_id: DEFAULT_BOOK_ID },
+  { id: 'cat_capital_default', name: 'Capital', book_id: DEFAULT_BOOK_ID },
+  { id: 'cat_party_default', name: 'Parties', book_id: DEFAULT_BOOK_ID },
+  { id: 'cat_expense_default', name: 'Expenses', book_id: DEFAULT_BOOK_ID },
+];
 
-    const { deletedAt, type, ...originalItem } = item;
-    allItems.push(originalItem);
-    await writeData(filePath, allItems);
-
-    // Remove from recycle bin
-    let bin = await readData<any>(recycleBinFilePath);
-    bin = bin.filter(i => i.id !== item.id || i.type !== item.type);
-    await writeData<any>(recycleBinFilePath, bin);
-};
-
-export const deletePermanently = async (item: any): Promise<void> => {
-    let bin = await readData<any>(recycleBinFilePath);
-    bin = bin.filter(i => i.id !== item.id || i.type !== item.type);
-    await writeData<any>(recycleBinFilePath, bin);
-};
-
-
-// --- Book Functions ---
-
-export const getBooks = async (): Promise<Book[]> => {
-  const books = await readData<Book>(booksFilePath);
-  if (books.length === 0) {
-      const defaultBook = await addBook('CASHBOOK');
-      return [defaultBook];
-  }
-  return books;
-};
-
-export const addBook = async (name: string): Promise<Book> => {
-  const allBooks = await readData<Book>(booksFilePath);
-  if (allBooks.find(b => b.name.toLowerCase() === name.toLowerCase())) {
-    throw new Error('A book with this name already exists.');
+const handleError = (maybeError: any, context: string) => {
+  if (!maybeError) {
+    return;
   }
 
-  const newBook: Book = { id: `book_${Date.now()}`, name };
-  allBooks.push(newBook);
-  await writeData<Book>(booksFilePath, allBooks);
+  const isSupabaseResult = typeof maybeError === 'object' && maybeError !== null && 'error' in maybeError;
+  const error = isSupabaseResult ? maybeError.error : maybeError;
 
-  // Create default Equity category for the new book
-  const allCategories = await readData<Category>(categoriesFilePath);
-  const equityCategory: Category = { id: `cat_equity_${newBook.id}`, name: 'Equity', bookId: newBook.id };
-  allCategories.push(equityCategory);
-  await writeData<Category>(categoriesFilePath, allCategories);
+  if (!error) {
+    return;
+  }
 
-  // Create default Opening Balance Equity account for the new book
-  const allAccounts = await readData<Account>(accountsFilePath);
-  const obeAccount: Account = {
-      id: `acc_opening_balance_equity_${newBook.id}`,
-      name: 'Opening Balance Equity',
-      categoryId: equityCategory.id,
-      bookId: newBook.id,
+  console.error(context, error);
+  throw new Error(`${context}: ${error.message || error}`);
+};
+
+const ensureDefaultBook = async (client?: SupabaseClient): Promise<void> => {
+  const db = client ?? (await createClient());
+  const { data, error } = await db.from<DbBookRow>('books').select('id').limit(1);
+  handleError(error, 'Failed to check books');
+  if (data && data.length > 0) {
+    return;
+  }
+
+  const defaultBook: DbBookRow = { id: DEFAULT_BOOK_ID, name: DEFAULT_BOOK_NAME };
+  handleError(await db.from('books').insert(defaultBook), 'Failed to create default book');
+  handleError(await db.from('categories').insert(DEFAULT_CATEGORY_SEEDS), 'Failed to seed default categories');
+
+  const obeAccount: DbAccountRow = {
+    id: `acc_opening_balance_equity_${DEFAULT_BOOK_ID}`,
+    name: 'Opening Balance Equity',
+    category_id: `cat_equity_${DEFAULT_BOOK_ID}`,
+    book_id: DEFAULT_BOOK_ID,
+    opening_balance: null,
+    opening_balance_type: null,
   };
-  allAccounts.push(obeAccount);
-  await writeData<Account>(accountsFilePath, allAccounts);
-
-  return newBook;
+  handleError(await db.from('accounts').insert(obeAccount), 'Failed to seed opening balance account');
 };
 
-export const updateBook = async (id: string, name: string): Promise<Book> => {
-  const books = await getBooks();
-  const index = books.findIndex(b => b.id === id);
-  if (index === -1) {
-    throw new Error('Book not found.');
+const ensureEquityCategory = async (bookId: string, client: SupabaseClient): Promise<DbCategoryRow> => {
+  const equityId = `cat_equity_${bookId}`;
+  const { data, error } = await client
+    .from<DbCategoryRow>('categories')
+    .select('*')
+    .eq('id', equityId)
+    .maybeSingle();
+  handleError(error, 'Failed to fetch equity category');
+  if (data) {
+    return data;
   }
-  books[index].name = name;
-  await writeData<Book>(booksFilePath, books);
-  return books[index];
-};
 
-export const deleteBook = async (id: string): Promise<void> => {
-  if (id === 'book_default') {
-      throw new Error('Cannot delete the default book.');
-  }
-  let books = await getBooks();
-  const bookToDelete = books.find(b => b.id === id);
-   if (!bookToDelete) {
-    throw new Error('Book not found.');
-  }
-  
-  // Find associated data before deleting book reference
-  let allTransactions = await readData<Transaction>(transactionsFilePath);
-  let allAccounts = await readData<Account>(accountsFilePath);
-  let allCategories = await readData<Category>(categoriesFilePath);
-  
-  const transactionsToBin = allTransactions.filter(t => t.bookId === id);
-  const accountsToBin = allAccounts.filter(a => a.bookId === id);
-  const categoriesToBin = allCategories.filter(c => c.bookId === id);
-
-  await addToRecycleBin([
-      { ...bookToDelete, type: 'book' },
-      ...transactionsToBin.map(t => ({ ...t, type: 'transaction' })),
-      ...accountsToBin.map(a => ({ ...a, type: 'account' })),
-      ...categoriesToBin.map(c => ({ ...c, type: 'category' }))
-  ]);
-  
-  // Filter out the deleted book and its data
-  const remainingBooks = books.filter(b => b.id !== id);
-  const remainingTransactions = allTransactions.filter(t => t.bookId !== id);
-  const remainingAccounts = allAccounts.filter(a => a.bookId !== id);
-  const remainingCategories = allCategories.filter(c => c.bookId !== id);
-
-  await writeData(booksFilePath, remainingBooks);
-  await writeData(transactionsFilePath, remainingTransactions);
-  await writeData(accountsFilePath, remainingAccounts);
-  await writeData(categoriesFilePath, remainingCategories);
-};
-
-
-// --- Other Data Functions ---
-const getOpeningBalanceEquityAccount = async(bookId: string): Promise<Account> => {
-    const allAccounts = await readData<Account>(accountsFilePath);
-    let obeAccount = allAccounts.find(a => a.id === `acc_opening_balance_equity_${bookId}`);
-    
-    if (!obeAccount) {
-        // Find or create the equity category
-        const allCategories = await readData<Category>(categoriesFilePath);
-        let equityCategory = allCategories.find(c => c.bookId === bookId && c.name.toLowerCase() === 'equity');
-        if (!equityCategory) {
-            equityCategory = { id: `cat_equity_${bookId}`, name: 'Equity', bookId };
-            allCategories.push(equityCategory);
-            await writeData<Category>(categoriesFilePath, allCategories);
-        }
-
-        obeAccount = {
-            id: `acc_opening_balance_equity_${bookId}`,
-            name: 'Opening Balance Equity',
-            categoryId: equityCategory.id,
-            bookId: bookId,
-        };
-        allAccounts.push(obeAccount);
-        await writeData<Account>(accountsFilePath, allAccounts);
-    }
-    return obeAccount;
-}
-
-export const getCategories = async (bookId: string): Promise<Category[]> => {
-  const categories = await readData<Category>(categoriesFilePath);
-  const bookCategories = categories.filter(c => c.bookId === bookId);
-
-  if (bookCategories.length === 0 && bookId === 'book_default') {
-      const defaultCategories: Category[] = [
-        { id: 'cat_cash_default', name: 'Cash', bookId },
-        { id: 'cat_capital_default', name: 'Capital', bookId },
-        { id: 'cat_party_default', name: 'Parties', bookId },
-        { id: 'cat_expense_default', name: 'Expenses', bookId },
-      ];
-      const allCategories = [...categories, ...defaultCategories];
-      await writeData<Category>(categoriesFilePath, allCategories);
-      return defaultCategories;
-  }
-  return bookCategories;
-};
-
-export const getAccounts = async (bookId: string): Promise<Account[]> => {
-    const allAccounts = await readData<Account>(accountsFilePath);
-    return allAccounts.filter(a => a.bookId === bookId);
-};
-
-export const getTransactions = async (bookId: string): Promise<Transaction[]> => {
-  const transactions = await readData<Transaction>(transactionsFilePath);
-  const bookTransactions = transactions.filter(t => t.bookId === bookId);
-  // Return sorted by date descending
-  return bookTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-};
-
-export const addTransaction = async (bookId: string, transaction: Omit<Transaction, 'id' | 'bookId'>): Promise<Transaction> => {
-  const allTransactions = await readData<Transaction>(transactionsFilePath);
-  const newTransaction: Transaction = {
-    ...transaction,
-    id: `txn_${Date.now()}`,
-    bookId: bookId
-  };
-  allTransactions.unshift(newTransaction);
-  await writeData<Transaction>(transactionsFilePath, allTransactions);
-  return newTransaction;
-};
-
-export const updateTransaction = async (bookId: string, id: string, transaction: Omit<Transaction, 'id' | 'bookId'>): Promise<Transaction> => {
-  const allTransactions = await readData<Transaction>(transactionsFilePath);
-  const index = allTransactions.findIndex(t => t.id === id && t.bookId === bookId);
-  if (index === -1) {
-    throw new Error('Transaction not found in this book.');
-  }
-  const updatedTransaction = { ...allTransactions[index], ...transaction, id, bookId };
-  allTransactions[index] = updatedTransaction;
-  await writeData<Transaction>(transactionsFilePath, allTransactions);
-  return updatedTransaction;
-};
-
-export const updateTransactionHighlight = async (bookId: string, id: string, highlight: Transaction['highlight'] | null): Promise<void> => {
-    const allTransactions = await readData<Transaction>(transactionsFilePath);
-    const index = allTransactions.findIndex(t => t.id === id && t.bookId === bookId);
-    if (index === -1) {
-        throw new Error('Transaction not found.');
-    }
-    if (highlight) {
-        allTransactions[index].highlight = highlight;
-    } else {
-        delete allTransactions[index].highlight;
-    }
-    await writeData<Transaction>(transactionsFilePath, allTransactions);
-};
-
-export const addCategory = async (bookId: string, name: string): Promise<Category> => {
-  const allCategories = await readData<Category>(categoriesFilePath);
-  const newCategory: Category = { id: `cat_${Date.now()}`, name, bookId };
-  if (allCategories.find(c => c.name.toLowerCase() === name.toLowerCase() && c.bookId === bookId)) {
-    throw new Error('Category already exists in this book.');
-  }
-  allCategories.push(newCategory);
-await writeData<Category>(categoriesFilePath, allCategories);
+  const newCategory: DbCategoryRow = { id: equityId, name: EQUITY_CATEGORY_NAME, book_id: bookId };
+  handleError(await client.from('categories').insert(newCategory), 'Failed to create equity category');
   return newCategory;
 };
 
+const getOpeningBalanceEquityAccount = async (bookId: string): Promise<Account> => {
+  const client = await createClient();
+  const obeId = `acc_opening_balance_equity_${bookId}`;
+  const { data, error } = await client
+    .from<DbAccountRow>('accounts')
+    .select('*')
+    .eq('id', obeId)
+    .maybeSingle();
+  handleError(error, 'Failed to fetch opening balance account');
+  if (data) {
+    return mapAccount(data);
+  }
+
+  const equityCategory = await ensureEquityCategory(bookId, client);
+  const newAccount: DbAccountRow = {
+    id: obeId,
+    name: 'Opening Balance Equity',
+    category_id: equityCategory.id,
+    book_id: bookId,
+    opening_balance: null,
+    opening_balance_type: null,
+  };
+  handleError(await client.from('accounts').insert(newAccount), 'Failed to create opening balance account');
+  return mapAccount(newAccount);
+};
+
+const normalizeBinRow = (item: BinItem) => {
+  if (!item || !item.id || !item.type) {
+    throw new Error('Recycle bin items must include an id and type.');
+  }
+  const deletedAt = item.deletedAt ?? new Date().toISOString();
+  return {
+    id: generateId('bin'),
+    entity_id: item.id,
+    entity_type: item.type,
+    payload: { ...item, deletedAt },
+    deleted_at: deletedAt,
+  } satisfies DbRecycleBinRow;
+};
+
+// --- Recycle Bin Helpers ---
+export const getRecycleBinItems = async (): Promise<any[]> => {
+  const client = await createClient();
+  const { data, error } = await client.from<DbRecycleBinRow>('recycle_bin').select('*').order('deleted_at', { ascending: false });
+  handleError(error, 'Failed to fetch recycle bin');
+  return (data ?? []).map((row) => ({ ...row.payload, type: row.entity_type, deletedAt: row.deleted_at }));
+};
+
+export const addToRecycleBin = async (item: BinItem | BinItem[]): Promise<void> => {
+  const client = await createClient();
+  const items = Array.isArray(item) ? item : [item];
+  if (items.length === 0) {
+    return;
+  }
+  const rows = items.map(normalizeBinRow);
+  handleError(await client.from('recycle_bin').insert(rows), 'Failed to add items to recycle bin');
+};
+
+export const restoreItem = async (item: BinItem): Promise<void> => {
+  const client = await createClient();
+  const { type, deletedAt, ...payload } = item;
+  if (!type) {
+    throw new Error('Item type is required to restore.');
+  }
+
+  switch (type) {
+    case 'book': {
+      const row: DbBookRow = { id: payload.id, name: payload.name };
+      handleError(await client.from('books').insert(row), 'Failed to restore book');
+      break;
+    }
+    case 'category': {
+      const row: DbCategoryRow = { id: payload.id, name: payload.name, book_id: payload.bookId };
+      handleError(await client.from('categories').insert(row), 'Failed to restore category');
+      break;
+    }
+    case 'account': {
+      const row: DbAccountRow = {
+        id: payload.id,
+        name: payload.name,
+        category_id: payload.categoryId,
+        book_id: payload.bookId,
+        opening_balance: payload.openingBalance ?? null,
+        opening_balance_type: payload.openingBalanceType ?? null,
+      };
+      handleError(await client.from('accounts').insert(row), 'Failed to restore account');
+      break;
+    }
+    case 'transaction': {
+      const row: DbTransactionRow = {
+        id: payload.id,
+        book_id: payload.bookId,
+        date: payload.date,
+        description: payload.description,
+        highlight: payload.highlight ?? null,
+      };
+      handleError(await client.from('transactions').insert(row), 'Failed to restore transaction');
+      if (Array.isArray(payload.entries) && payload.entries.length > 0) {
+        const entryRows = payload.entries.map((entry: TransactionEntry) => ({
+          id: generateId('txn_entry'),
+          transaction_id: payload.id,
+          account_id: entry.accountId,
+          amount: entry.amount,
+          type: entry.type,
+          description: entry.description ?? null,
+        }));
+        handleError(await client.from('transaction_entries').insert(entryRows), 'Failed to restore transaction entries');
+      }
+      break;
+    }
+    default:
+      throw new Error(`Unsupported type '${type}' for restore.`);
+  }
+
+  handleError(
+    await client
+      .from('recycle_bin')
+      .delete()
+      .match({ entity_id: payload.id, entity_type: type, deleted_at: deletedAt }),
+    'Failed to remove item from recycle bin',
+  );
+};
+
+export const deletePermanently = async (item: BinItem): Promise<void> => {
+  const client = await createClient();
+  handleError(
+    await client.from('recycle_bin').delete().match({ entity_id: item.id, entity_type: item.type, deleted_at: item.deletedAt }),
+    'Failed to delete recycle bin item',
+  );
+};
+
+const fetchTransactionsForBook = async (bookId: string, client: SupabaseClient) => {
+  const { data, error } = await client
+    .from<DbTransactionWithEntries>('transactions')
+    .select('id, book_id, date, description, highlight, entries:transaction_entries(id, transaction_id, account_id, amount, type, description)')
+    .eq('book_id', bookId);
+  handleError(error, 'Failed to fetch transactions');
+  return (data ?? []).map(mapTransaction);
+};
+
+// --- Book Functions ---
+export const getBooks = async (): Promise<Book[]> => {
+  const client = await createClient();
+  await ensureDefaultBook(client);
+  const { data, error } = await client.from<DbBookRow>('books').select('id, name').order('created_at', { ascending: true });
+  handleError(error, 'Failed to fetch books');
+  return (data ?? []).map(mapBook);
+};
+
+export const addBook = async (name: string): Promise<Book> => {
+  const client = await createClient();
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error('Book name cannot be empty.');
+  }
+  const { data: existing, error: existingError } = await client
+    .from<DbBookRow>('books')
+    .select('id')
+    .ilike('name', trimmed)
+    .maybeSingle();
+  handleError(existingError, 'Failed to validate book name');
+  if (existing) {
+    throw new Error('A book with this name already exists.');
+  }
+
+  const book: DbBookRow = { id: generateId('book'), name: trimmed };
+  handleError(await client.from('books').insert(book), 'Failed to create book');
+
+  const equityCategory = await ensureEquityCategory(book.id, client);
+  const obeAccount: DbAccountRow = {
+    id: `acc_opening_balance_equity_${book.id}`,
+    name: 'Opening Balance Equity',
+    category_id: equityCategory.id,
+    book_id: book.id,
+    opening_balance: null,
+    opening_balance_type: null,
+  };
+  handleError(await client.from('accounts').insert(obeAccount), 'Failed to create opening balance account for book');
+
+  return mapBook(book);
+};
+
+export const updateBook = async (id: string, name: string): Promise<Book> => {
+  const client = await createClient();
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error('Book name cannot be empty.');
+  }
+  handleError(await client.from('books').update({ name: trimmed }).eq('id', id), 'Failed to update book');
+  return { id, name: trimmed };
+};
+
+export const deleteBook = async (id: string): Promise<void> => {
+  if (id === DEFAULT_BOOK_ID) {
+    throw new Error('Cannot delete the default book.');
+  }
+  const client = await createClient();
+  const { data: book, error: bookError } = await client.from<DbBookRow>('books').select('*').eq('id', id).maybeSingle();
+  handleError(bookError, 'Failed to fetch book');
+  if (!book) {
+    throw new Error('Book not found.');
+  }
+
+  const transactions = await fetchTransactionsForBook(id, client);
+  const { data: accountsData, error: accountsError } = await client.from<DbAccountRow>('accounts').select('*').eq('book_id', id);
+  handleError(accountsError, 'Failed to fetch accounts');
+  const { data: categoriesData, error: categoriesError } = await client.from<DbCategoryRow>('categories').select('*').eq('book_id', id);
+  handleError(categoriesError, 'Failed to fetch categories');
+
+  await addToRecycleBin([
+    { ...book, type: 'book' },
+    ...transactions.map((transaction) => ({ ...transaction, type: 'transaction' })),
+    ...(accountsData ?? []).map((row) => ({ ...mapAccount(row), type: 'account' })),
+    ...(categoriesData ?? []).map((row) => ({ ...mapCategory(row), type: 'category' })),
+  ]);
+
+  handleError(await client.from('books').delete().eq('id', id), 'Failed to delete book');
+};
+
+// --- Category Functions ---
+export const getCategories = async (bookId: string): Promise<Category[]> => {
+  const client = await createClient();
+  const { data, error } = await client.from<DbCategoryRow>('categories').select('*').eq('book_id', bookId).order('name');
+  handleError(error, 'Failed to fetch categories');
+  if ((!data || data.length === 0) && bookId === DEFAULT_BOOK_ID) {
+    handleError(await client.from('categories').insert(DEFAULT_CATEGORY_SEEDS), 'Failed to seed default categories for book');
+    return DEFAULT_CATEGORY_SEEDS.map(mapCategory);
+  }
+  return (data ?? []).map(mapCategory);
+};
+
+export const addCategory = async (bookId: string, name: string): Promise<Category> => {
+  const client = await createClient();
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error('Category name cannot be empty.');
+  }
+  const { data: existing, error } = await client
+    .from<DbCategoryRow>('categories')
+    .select('id')
+    .eq('book_id', bookId)
+    .ilike('name', trimmed)
+    .maybeSingle();
+  handleError(error, 'Failed to validate category uniqueness');
+  if (existing) {
+    throw new Error('Category already exists in this book.');
+  }
+
+  const row: DbCategoryRow = { id: generateId('cat'), name: trimmed, book_id: bookId };
+  handleError(await client.from('categories').insert(row), 'Failed to create category');
+  return mapCategory(row);
+};
+
 export const updateCategory = async (bookId: string, id: string, name: string): Promise<Category> => {
-    const allCategories = await readData<Category>(categoriesFilePath);
-    const index = allCategories.findIndex(c => c.id === id && c.bookId === bookId);
-    if (index === -1) {
-        throw new Error('Category not found in this book.');
-    }
-    if (allCategories.find(c => c.name.toLowerCase() === name.toLowerCase() && c.bookId === bookId && c.id !== id)) {
-        throw new Error(`A category named "${name}" already exists in this book.`);
-    }
-    allCategories[index].name = name;
-    await writeData<Category>(categoriesFilePath, allCategories);
-    return allCategories[index];
+  const client = await createClient();
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error('Category name cannot be empty.');
+  }
+  const { data: duplicate, error } = await client
+    .from<DbCategoryRow>('categories')
+    .select('id')
+    .eq('book_id', bookId)
+    .neq('id', id)
+    .ilike('name', trimmed)
+    .maybeSingle();
+  handleError(error, 'Failed to validate category uniqueness');
+  if (duplicate) {
+    throw new Error(`A category named "${trimmed}" already exists in this book.`);
+  }
+
+  handleError(await client.from('categories').update({ name: trimmed }).eq('id', id).eq('book_id', bookId), 'Failed to update category');
+  return { id, name: trimmed, bookId };
 };
 
 export const deleteCategory = async (bookId: string, id: string): Promise<void> => {
-    const accounts = await getAccounts(bookId);
-    if (id.startsWith('cat_equity_')) {
-        throw new Error('Cannot delete the system-generated Equity category.');
-    }
-    const isCategoryInUse = accounts.some(acc => acc.categoryId === id);
-    if (isCategoryInUse) {
-        throw new Error('Cannot delete category. It is currently assigned to one or more accounts.');
-    }
-
-    let allCategories = await readData<Category>(categoriesFilePath);
-    const categoryToDelete = allCategories.find(c => c.id === id && c.bookId === bookId);
-    
-    if (!categoryToDelete) {
-        throw new Error('Category not found in this book.');
-    }
-    
-    await addToRecycleBin({ ...categoryToDelete, type: 'category' });
-
-    const remainingCategories = allCategories.filter(c => c.id !== id);
-    await writeData<Category>(categoriesFilePath, remainingCategories);
-};
-
-export const deleteTransaction = async (bookId: string, id: string): Promise<void> => {
-  let allTransactions = await readData<Transaction>(transactionsFilePath);
-  const index = allTransactions.findIndex(t => t.id === id && t.bookId === bookId);
-  if (index === -1) {
-    throw new Error('Transaction not found.');
+  if (id.startsWith('cat_equity_')) {
+    throw new Error('Cannot delete the system-generated Equity category.');
   }
-  const [deletedTransaction] = allTransactions.splice(index, 1);
-  await addToRecycleBin({ ...deletedTransaction, type: 'transaction' });
-  await writeData<Transaction>(transactionsFilePath, allTransactions);
+  const client = await createClient();
+  const { data: accounts, error } = await client.from<DbAccountRow>('accounts').select('id, category_id').eq('book_id', bookId).eq('category_id', id);
+  handleError(error, 'Failed to check category usage');
+  if (accounts && accounts.length > 0) {
+    throw new Error('Cannot delete category. It is currently assigned to one or more accounts.');
+  }
+
+  const { data: categoryRow, error: catError } = await client.from<DbCategoryRow>('categories').select('*').eq('id', id).maybeSingle();
+  handleError(catError, 'Failed to fetch category');
+  if (!categoryRow) {
+    throw new Error('Category not found in this book.');
+  }
+
+  await addToRecycleBin({ ...mapCategory(categoryRow), type: 'category' });
+  handleError(await client.from('categories').delete().eq('id', id), 'Failed to delete category');
 };
 
-export const deleteMultipleTransactions = async (bookId: string, transactionIds: string[]): Promise<void> => {
-    let allTransactions = await readData<Transaction>(transactionsFilePath);
-    
-    const transactionsToDelete = allTransactions.filter(t => t.bookId === bookId && transactionIds.includes(t.id));
-    if (transactionsToDelete.length !== transactionIds.length) {
-        throw new Error('Some transactions could not be found for deletion.');
-    }
-
-    await addToRecycleBin(transactionsToDelete.map(t => ({...t, type: 'transaction'})));
-
-    const remainingTransactions = allTransactions.filter(t => !(t.bookId === bookId && transactionIds.includes(t.id)));
-
-    await writeData<Transaction>(transactionsFilePath, remainingTransactions);
+// --- Account Functions ---
+export const getAccounts = async (bookId: string): Promise<Account[]> => {
+  const client = await createClient();
+  const { data, error } = await client.from<DbAccountRow>('accounts').select('*').eq('book_id', bookId).order('name');
+  handleError(error, 'Failed to fetch accounts');
+  return (data ?? []).map(mapAccount);
 };
 
 export const addAccount = async (
-  bookId: string, 
-  accountData: Omit<Account, 'id' | 'bookId'>
+  bookId: string,
+  accountData: Omit<Account, 'id' | 'bookId'>,
 ): Promise<Account> => {
-    const allAccounts = await readData<Account>(accountsFilePath);
-    
-    if (accountData.name) {
-        const existingAccount = allAccounts.find(acc => acc.bookId === bookId && acc.name.toLowerCase() === accountData.name.toLowerCase());
-        if (existingAccount) {
-            throw new Error(`An account named "${accountData.name}" already exists in this book.`);
-        }
-    }
+  const client = await createClient();
+  const trimmedName = accountData.name?.trim();
+  if (!trimmedName) {
+    throw new Error('Account name is required.');
+  }
 
+  const { data: existing, error } = await client
+    .from<DbAccountRow>('accounts')
+    .select('id')
+    .eq('book_id', bookId)
+    .ilike('name', trimmedName)
+    .maybeSingle();
+  handleError(error, 'Failed to validate account uniqueness');
+  if (existing) {
+    throw new Error(`An account named "${trimmedName}" already exists in this book.`);
+  }
 
-    const newAccount: Account = {
-        id: `acc_${Date.now()}`,
-        bookId: bookId,
-        name: accountData.name,
-        categoryId: accountData.categoryId,
-    };
-    allAccounts.push(newAccount);
-    await writeData<Account>(accountsFilePath, allAccounts);
+  const row: DbAccountRow = {
+    id: generateId('acc'),
+    name: trimmedName,
+    category_id: accountData.categoryId,
+    book_id: bookId,
+    opening_balance: accountData.openingBalance ?? null,
+    opening_balance_type: accountData.openingBalanceType ?? null,
+  };
+  handleError(await client.from('accounts').insert(row), 'Failed to create account');
 
-    // If there's an opening balance, create a transaction for it
-    if (accountData.openingBalance && accountData.openingBalance > 0) {
-        const obeAccount = await getOpeningBalanceEquityAccount(bookId);
+  if (accountData.openingBalance && accountData.openingBalance > 0) {
+    const obeAccount = await getOpeningBalanceEquityAccount(bookId);
+    await addTransaction(bookId, {
+      date: new Date().toISOString(),
+      description: `Opening Balance for ${trimmedName}`,
+      entries: [
+        { accountId: row.id, amount: accountData.openingBalance, type: accountData.openingBalanceType || 'debit' },
+        {
+          accountId: obeAccount.id,
+          amount: accountData.openingBalance,
+          type: (accountData.openingBalanceType || 'debit') === 'debit' ? 'credit' : 'debit',
+        },
+      ],
+    });
+  }
 
-        const newAccountEntry = {
-            accountId: newAccount.id,
-            amount: accountData.openingBalance,
-            type: accountData.openingBalanceType || 'debit',
-        };
-
-        const obeAccountEntry = {
-            accountId: obeAccount.id,
-            amount: accountData.openingBalance,
-            type: newAccountEntry.type === 'debit' ? 'credit' : 'debit',
-        };
-
-        await addTransaction(bookId, {
-            date: new Date().toISOString(),
-            description: `Opening Balance for ${newAccount.name}`,
-            entries: [newAccountEntry, obeAccountEntry],
-        });
-    }
-
-    return newAccount;
+  return mapAccount(row);
 };
 
-export const updateAccount = async (bookId: string, accountId: string, data: Partial<Omit<Account, 'id' | 'bookId'>>): Promise<Account> => {
-  const allAccounts = await readData<Account>(accountsFilePath);
-  const allTransactions = await readData<Transaction>(transactionsFilePath);
-  
-  const index = allAccounts.findIndex(a => a.id === accountId && a.bookId === bookId);
-  if (index === -1) {
+export const updateAccount = async (
+  bookId: string,
+  accountId: string,
+  data: Partial<Omit<Account, 'id' | 'bookId'>>,
+): Promise<Account> => {
+  const client = await createClient();
+  const { data: accountRow, error } = await client.from<DbAccountRow>('accounts').select('*').eq('id', accountId).eq('book_id', bookId).maybeSingle();
+  handleError(error, 'Failed to fetch account');
+  if (!accountRow) {
     throw new Error('Account not found in this book.');
   }
-  
-  const originalAccount = allAccounts[index];
 
-  if (data.name && data.name !== originalAccount.name) {
-    const existingAccount = allAccounts.find(acc => acc.bookId === bookId && acc.name.toLowerCase() === data.name?.toLowerCase() && acc.id !== accountId);
-    if (existingAccount) {
-        throw new Error(`An account named "${data.name}" already exists in this book.`);
+  if (data.name && data.name !== accountRow.name) {
+    const { data: duplicate, error: dupError } = await client
+      .from<DbAccountRow>('accounts')
+      .select('id')
+      .eq('book_id', bookId)
+      .neq('id', accountId)
+      .ilike('name', data.name)
+      .maybeSingle();
+    handleError(dupError, 'Failed to validate account uniqueness');
+    if (duplicate) {
+      throw new Error(`An account named "${data.name}" already exists in this book.`);
     }
   }
 
-  const updatedAccount = { ...originalAccount, ...data };
-  allAccounts[index] = updatedAccount;
-  
-  // --- Opening Balance Logic ---
-  const openingBalanceTx = allTransactions.find(t => 
-      t.bookId === bookId &&
-      t.description === `Opening Balance for ${originalAccount.name}` &&
-      t.entries.some(e => e.accountId === accountId)
+  const updatedRow: Partial<DbAccountRow> = {
+    name: data.name ?? accountRow.name,
+    category_id: data.categoryId ?? accountRow.category_id,
+    opening_balance: data.openingBalance ?? accountRow.opening_balance,
+    opening_balance_type: data.openingBalanceType ?? accountRow.opening_balance_type,
+  };
+  handleError(await client.from('accounts').update(updatedRow).eq('id', accountId), 'Failed to update account');
+
+  const transactions = await fetchTransactionsForBook(bookId, client);
+  const openingBalanceTx = transactions.find(
+    (tx) =>
+      tx.description === `Opening Balance for ${accountRow.name}` &&
+      tx.entries.some((entry) => entry.accountId === accountId),
   );
 
-  const newBalance = data.openingBalance;
-  const newType = data.openingBalanceType || 'debit';
+  const newBalance = data.openingBalance ?? accountRow.opening_balance ?? 0;
+  const newType = data.openingBalanceType || accountRow.opening_balance_type || 'debit';
 
-  // Case 1: OB existed, and is being updated to a non-zero value
-  if (openingBalanceTx && newBalance && newBalance > 0) {
-      const obeAccount = await getOpeningBalanceEquityAccount(bookId);
-      const newEntries = [
-          { accountId: accountId, amount: newBalance, type: newType },
-          { accountId: obeAccount.id, amount: newBalance, type: newType === 'debit' ? 'credit' : 'debit' }
-      ];
-      await updateTransaction(bookId, openingBalanceTx.id, {
-          ...openingBalanceTx,
-          description: `Opening Balance for ${updatedAccount.name}`, // Also update name here
-          entries: newEntries
-      });
-  } 
-  // Case 2: OB existed, and is being updated to zero (or removed) -> delete the OB transaction
-  else if (openingBalanceTx && (!newBalance || newBalance === 0)) {
-      await deleteTransaction(bookId, openingBalanceTx.id);
+  if (openingBalanceTx && newBalance > 0) {
+    const obeAccount = await getOpeningBalanceEquityAccount(bookId);
+    await updateTransaction(bookId, openingBalanceTx.id, {
+      date: openingBalanceTx.date,
+      description: `Opening Balance for ${updatedRow.name}`,
+      highlight: openingBalanceTx.highlight,
+      entries: [
+        { accountId, amount: newBalance, type: newType },
+        { accountId: obeAccount.id, amount: newBalance, type: newType === 'debit' ? 'credit' : 'debit' },
+      ],
+    });
+  } else if (openingBalanceTx && newBalance === 0) {
+    await deleteTransaction(bookId, openingBalanceTx.id);
+  } else if (!openingBalanceTx && newBalance > 0) {
+    const obeAccount = await getOpeningBalanceEquityAccount(bookId);
+    await addTransaction(bookId, {
+      date: new Date().toISOString(),
+      description: `Opening Balance for ${updatedRow.name}`,
+      entries: [
+        { accountId, amount: newBalance, type: newType },
+        { accountId: obeAccount.id, amount: newBalance, type: newType === 'debit' ? 'credit' : 'debit' },
+      ],
+    });
+  } else if (data.name && openingBalanceTx) {
+    await updateTransaction(bookId, openingBalanceTx.id, {
+      date: openingBalanceTx.date,
+      description: `Opening Balance for ${data.name}`,
+      highlight: openingBalanceTx.highlight,
+      entries: openingBalanceTx.entries,
+    });
   }
-  // Case 3: OB did NOT exist, and is being created with a non-zero value
-  else if (!openingBalanceTx && newBalance && newBalance > 0) {
-       const obeAccount = await getOpeningBalanceEquityAccount(bookId);
-        const newAccountEntry = {
-            accountId: accountId,
-            amount: newBalance,
-            type: newType,
-        };
-        const obeAccountEntry = {
-            accountId: obeAccount.id,
-            amount: newBalance,
-            type: newType === 'debit' ? 'credit' : 'debit',
-        };
-        await addTransaction(bookId, {
-            date: new Date().toISOString(),
-            description: `Opening Balance for ${updatedAccount.name}`,
-            entries: [newAccountEntry, obeAccountEntry],
-        });
-  }
-  // Case 4: Name change only, no balance change, but OB exists
-  else if (data.name && data.name !== originalAccount.name && openingBalanceTx) {
-      await updateTransaction(bookId, openingBalanceTx.id, { ...openingBalanceTx, description: `Opening Balance for ${data.name}`});
-  }
-  
-  // Write the final account data
-  await writeData<Account>(accountsFilePath, allAccounts);
 
-  return updatedAccount;
+  return {
+    id: accountId,
+    name: updatedRow.name!,
+    categoryId: updatedRow.category_id!,
+    bookId,
+    openingBalance: updatedRow.opening_balance ?? undefined,
+    openingBalanceType: updatedRow.opening_balance_type ?? undefined,
+  };
 };
 
 export const deleteAccount = async (bookId: string, id: string): Promise<void> => {
-    if (id.startsWith('acc_opening_balance_equity_')) {
-        throw new Error('Cannot delete the system-generated Opening Balance Equity account.');
-    }
+  if (id.startsWith('acc_opening_balance_equity_')) {
+    throw new Error('Cannot delete the system-generated Opening Balance Equity account.');
+  }
+  const client = await createClient();
+  const accounts = await getAccounts(bookId);
+  const account = accounts.find((acc) => acc.id === id);
+  if (!account) {
+    throw new Error('Account not found.');
+  }
 
-    let allTransactions = await readData<Transaction>(transactionsFilePath);
-    let allAccounts = await readData<Account>(accountsFilePath);
+  const transactions = await fetchTransactionsForBook(bookId, client);
+  const relatedTransactions = transactions.filter((tx) => tx.entries.some((entry) => entry.accountId === id));
+  const openingBalanceTx = relatedTransactions.find((tx) => tx.description === `Opening Balance for ${account.name}`);
+  if (relatedTransactions.length > (openingBalanceTx ? 1 : 0)) {
+    throw new Error('Cannot delete account with existing transactions. Only accounts with just an opening balance can be auto-cleaned.');
+  }
 
-    const accountToDelete = allAccounts.find(a => a.id === id && a.bookId === bookId);
-    if (!accountToDelete) {
-        throw new Error('Account not found.');
-    }
+  if (openingBalanceTx) {
+    await deleteTransaction(bookId, openingBalanceTx.id);
+  }
 
-    const accountTransactions = allTransactions.filter(t => t.bookId === bookId && t.entries.some(e => e.accountId === id));
-    const openingBalanceTx = accountTransactions.find(t => t.description === `Opening Balance for ${accountToDelete.name}`);
-
-    // Check if there are any *other* transactions
-    if (accountTransactions.length > (openingBalanceTx ? 1 : 0)) {
-        throw new Error('Cannot delete account with existing transactions. Only accounts with just an opening balance can be auto-cleaned.');
-    }
-    
-    // If an opening balance transaction exists, delete it first
-    if (openingBalanceTx) {
-        await deleteTransaction(bookId, openingBalanceTx.id);
-    }
-    
-    // Now delete the account
-    const remainingAccounts = allAccounts.filter(a => a.id !== id || a.bookId !== bookId);
-    await addToRecycleBin({ ...accountToDelete, type: 'account' });
-    await writeData<Account>(accountsFilePath, remainingAccounts);
+  await addToRecycleBin({ ...account, type: 'account' });
+  handleError(await client.from('accounts').delete().eq('id', id), 'Failed to delete account');
 };
 
 export const deleteMultipleAccounts = async (bookId: string, accountIds: string[]): Promise<void> => {
-    const allTransactions = await readData<Transaction>(transactionsFilePath);
-    let allAccounts = await readData<Account>(accountsFilePath);
+  const client = await createClient();
+  const accounts = await getAccounts(bookId);
+  const transactions = await fetchTransactionsForBook(bookId, client);
 
-    let accountsToDelete = allAccounts.filter(acc => acc.bookId === bookId && accountIds.includes(acc.id));
-
-    for (const account of accountsToDelete) {
-        if (account.id.startsWith('acc_opening_balance_equity_')) {
-            throw new Error(`Cannot delete the system-generated Opening Balance Equity account.`);
-        }
-        
-        const accountTransactions = allTransactions.filter(t => t.bookId === bookId && t.entries.some(e => e.accountId === account.id));
-        const openingBalanceTx = accountTransactions.find(t => t.description === `Opening Balance for ${account.name}`);
-        
-        if (accountTransactions.length > (openingBalanceTx ? 1 : 0)) {
-            throw new Error(`Cannot delete account "${account.name}" because it has existing transactions.`);
-        }
-
-        if (openingBalanceTx) {
-            await deleteTransaction(bookId, openingBalanceTx.id);
-        }
-
-        await addToRecycleBin({ ...account, type: 'account' });
+  for (const accountId of accountIds) {
+    const account = accounts.find((acc) => acc.id === accountId);
+    if (!account) {
+      throw new Error(`Account ${accountId} not found.`);
     }
-    
-    const remainingAccounts = allAccounts.filter(acc => !accountIds.includes(acc.id) || acc.bookId !== bookId);
-    await writeData<Account>(accountsFilePath, remainingAccounts);
+    if (account.id.startsWith('acc_opening_balance_equity_')) {
+      throw new Error('Cannot delete the system-generated Opening Balance Equity account.');
+    }
+
+    const relatedTransactions = transactions.filter((tx) => tx.entries.some((entry) => entry.accountId === account.id));
+    const openingBalanceTx = relatedTransactions.find((tx) => tx.description === `Opening Balance for ${account.name}`);
+
+    if (relatedTransactions.length > (openingBalanceTx ? 1 : 0)) {
+      throw new Error(`Cannot delete account "${account.name}" because it has existing transactions.`);
+    }
+
+    if (openingBalanceTx) {
+      await deleteTransaction(bookId, openingBalanceTx.id);
+    }
+  }
+
+  await addToRecycleBin(accounts.filter((acc) => accountIds.includes(acc.id)).map((acc) => ({ ...acc, type: 'account' })));
+  handleError(await client.from('accounts').delete().in('id', accountIds), 'Failed to delete accounts');
 };
 
+// --- Transaction Functions ---
+export const getTransactions = async (bookId: string): Promise<Transaction[]> => {
+  const client = await createClient();
+  const { data, error } = await client
+    .from<DbTransactionWithEntries>('transactions')
+    .select('id, book_id, date, description, highlight, entries:transaction_entries(id, transaction_id, account_id, amount, type, description)')
+    .eq('book_id', bookId)
+    .order('date', { ascending: false })
+    .order('created_at', { ascending: false });
+  handleError(error, 'Failed to fetch transactions');
+  return (data ?? []).map(mapTransaction);
+};
+
+export const addTransaction = async (
+  bookId: string,
+  transaction: Omit<Transaction, 'id' | 'bookId'>,
+): Promise<Transaction> => {
+  const client = await createClient();
+  const transactionId = generateId('txn');
+  const row: DbTransactionRow = {
+    id: transactionId,
+    book_id: bookId,
+    date: transaction.date,
+    description: transaction.description,
+    highlight: transaction.highlight ?? null,
+  };
+
+  handleError(await client.from('transactions').insert(row), 'Failed to create transaction');
+  const entryRows = transaction.entries.map((entry) => ({
+    id: generateId('txn_entry'),
+    transaction_id: transactionId,
+    account_id: entry.accountId,
+    amount: entry.amount,
+    type: entry.type,
+    description: entry.description ?? null,
+  }));
+  const entriesResult = await client.from('transaction_entries').insert(entryRows);
+  if (entriesResult.error) {
+    await client.from('transactions').delete().eq('id', transactionId);
+    handleError(entriesResult, 'Failed to create transaction entries');
+  }
+
+  return {
+    id: transactionId,
+    bookId,
+    date: transaction.date,
+    description: transaction.description,
+    highlight: transaction.highlight,
+    entries: transaction.entries,
+  };
+};
+
+export const updateTransaction = async (
+  bookId: string,
+  id: string,
+  transaction: Omit<Transaction, 'id' | 'bookId'>,
+): Promise<Transaction> => {
+  const client = await createClient();
+  handleError(
+    await client
+      .from('transactions')
+      .update({
+        date: transaction.date,
+        description: transaction.description,
+        highlight: transaction.highlight ?? null,
+      })
+      .eq('id', id)
+      .eq('book_id', bookId),
+    'Failed to update transaction',
+  );
+
+  handleError(await client.from('transaction_entries').delete().eq('transaction_id', id), 'Failed to clear transaction entries');
+  const entryRows = transaction.entries.map((entry) => ({
+    id: generateId('txn_entry'),
+    transaction_id: id,
+    account_id: entry.accountId,
+    amount: entry.amount,
+    type: entry.type,
+    description: entry.description ?? null,
+  }));
+  handleError(await client.from('transaction_entries').insert(entryRows), 'Failed to recreate transaction entries');
+
+  return {
+    id,
+    bookId,
+    date: transaction.date,
+    description: transaction.description,
+    highlight: transaction.highlight,
+    entries: transaction.entries,
+  };
+};
+
+export const updateTransactionHighlight = async (
+  bookId: string,
+  id: string,
+  highlight: Transaction['highlight'] | null,
+): Promise<void> => {
+  const client = await createClient();
+  handleError(
+    await client
+      .from('transactions')
+      .update({ highlight })
+      .eq('id', id)
+      .eq('book_id', bookId),
+    'Failed to update transaction highlight',
+  );
+};
+
+export const deleteTransaction = async (bookId: string, id: string): Promise<void> => {
+  const client = await createClient();
+  const { data, error } = await client
+    .from<DbTransactionWithEntries>('transactions')
+    .select('id, book_id, date, description, highlight, entries:transaction_entries(id, transaction_id, account_id, amount, type, description)')
+    .eq('id', id)
+    .eq('book_id', bookId)
+    .maybeSingle();
+  handleError(error, 'Failed to fetch transaction');
+  if (!data) {
+    throw new Error('Transaction not found.');
+  }
+
+  await addToRecycleBin({ ...mapTransaction(data), type: 'transaction' });
+  handleError(await client.from('transactions').delete().eq('id', id), 'Failed to delete transaction');
+};
+
+export const deleteMultipleTransactions = async (bookId: string, transactionIds: string[]): Promise<void> => {
+  const client = await createClient();
+  const { data, error } = await client
+    .from<DbTransactionWithEntries>('transactions')
+    .select('id, book_id, date, description, highlight, entries:transaction_entries(id, transaction_id, account_id, amount, type, description)')
+    .eq('book_id', bookId)
+    .in('id', transactionIds);
+  handleError(error, 'Failed to fetch transactions for deletion');
+  const transactions = (data ?? []).map(mapTransaction);
+  if (transactions.length !== transactionIds.length) {
+    throw new Error('Some transactions could not be found for deletion.');
+  }
+
+  await addToRecycleBin(transactions.map((tx) => ({ ...tx, type: 'transaction' })));
+  handleError(await client.from('transactions').delete().in('id', transactionIds), 'Failed to delete transactions');
+};
 
 // --- Note Functions ---
-
 export const getNotes = async (bookId: string): Promise<Note[]> => {
-    const allNotes = await readData<Note>(notesFilePath);
-    const bookNotes = allNotes.filter(note => note.bookId === bookId);
-    return bookNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const client = await createClient();
+  const { data, error } = await client
+    .from<DbNoteRow>('notes')
+    .select('*')
+    .eq('book_id', bookId)
+    .order('created_at', { ascending: false });
+  handleError(error, 'Failed to fetch notes');
+  return (data ?? []).map(mapNote);
 };
 
 export const addNote = async (bookId: string, text: string): Promise<Note> => {
-    const allNotes = await readData<Note>(notesFilePath);
-    const newNote: Note = {
-        id: `note_${Date.now()}`,
-        bookId,
-        text,
-        isCompleted: false,
-        createdAt: new Date().toISOString(),
-    };
-    allNotes.unshift(newNote);
-    await writeData<Note>(notesFilePath, allNotes);
-    return newNote;
+  const client = await createClient();
+  const row = {
+    id: generateId('note'),
+    book_id: bookId,
+    text,
+    is_completed: false,
+    created_at: new Date().toISOString(),
+  } satisfies DbNoteRow;
+  handleError(await client.from('notes').insert(row), 'Failed to create note');
+  return mapNote(row);
 };
 
-export const updateNote = async (bookId: string, id: string, data: Partial<Omit<Note, 'id' | 'bookId'>>): Promise<Note> => {
-    const allNotes = await readData<Note>(notesFilePath);
-    const index = allNotes.findIndex(note => note.id === id && note.bookId === bookId);
-    if (index === -1) {
-        throw new Error('Note not found.');
-    }
-    const updatedNote = { ...allNotes[index], ...data };
-    allNotes[index] = updatedNote;
-    await writeData<Note>(notesFilePath, allNotes);
-    return updatedNote;
+export const updateNote = async (
+  bookId: string,
+  id: string,
+  data: Partial<Omit<Note, 'id' | 'bookId'>>,
+): Promise<Note> => {
+  const client = await createClient();
+  const payload: Partial<DbNoteRow> = {
+    text: data.text,
+    is_completed: data.isCompleted,
+  };
+  handleError(
+    await client
+      .from('notes')
+      .update(payload)
+      .eq('id', id)
+      .eq('book_id', bookId),
+    'Failed to update note',
+  );
+  const { data: updated, error } = await client.from<DbNoteRow>('notes').select('*').eq('id', id).maybeSingle();
+  handleError(error, 'Failed to fetch updated note');
+  if (!updated) {
+    throw new Error('Note not found.');
+  }
+  return mapNote(updated);
 };
 
 export const deleteNote = async (bookId: string, id: string): Promise<void> => {
-    let allNotes = await readData<Note>(notesFilePath);
-    const remainingNotes = allNotes.filter(note => note.id !== id || note.bookId !== bookId);
-    await writeData<Note>(notesFilePath, remainingNotes);
+  const client = await createClient();
+  handleError(await client.from('notes').delete().eq('id', id).eq('book_id', bookId), 'Failed to delete note');
 };

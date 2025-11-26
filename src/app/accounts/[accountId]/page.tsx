@@ -17,7 +17,8 @@ type LedgerEntry = {
 
 export default async function AccountLedgerPage({ params }: { params: { accountId: string } }) {
   const { accountId } = params;
-  const activeBookId = cookies().get('activeBookId')?.value || 'book_default';
+  const cookieStore = await cookies();
+  const activeBookId = cookieStore.get('activeBookId')?.value || 'book_default';
 
   const [accounts, transactions, categories] = await Promise.all([
     getAccounts(activeBookId),

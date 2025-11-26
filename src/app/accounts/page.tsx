@@ -5,7 +5,8 @@ import { cookies } from 'next/headers';
 import type { Transaction } from '@/lib/types';
 
 export default async function AllAccountsPage() {
-  const activeBookId = cookies().get('activeBookId')?.value || 'book_default';
+  const cookieStore = await cookies();
+  const activeBookId = cookieStore.get('activeBookId')?.value || 'book_default';
 
   const [accounts, categories, transactions] = await Promise.all([
     getAccounts(activeBookId),

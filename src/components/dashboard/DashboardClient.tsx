@@ -58,7 +58,7 @@ export default function DashboardClient({ initialTransactions, accounts, categor
       difference: totalDebit - totalCredit,
       accountsInSelectedCategory,
     };
-  }, [initialTransactions, accounts, categories, selectedCategoryId]);
+  }, [initialTransactions, accounts, selectedCategoryId]);
 
   const selectedCategoryName = categories.find(c => c.id === selectedCategoryId)?.name;
   

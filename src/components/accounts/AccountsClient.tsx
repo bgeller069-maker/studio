@@ -16,7 +16,7 @@ import { ArrowLeft, Edit, PlusCircle, Trash2, ArrowUpDown, MoreVertical, Scale, 
 import { Badge } from '@/components/ui/badge';
 import type { Account, Category, Transaction } from '@/lib/types';
 import { formatCurrency, cn } from '@/lib/utils';
-import { useTransition, useState, useMemo } from 'react';
+import { useTransition, useState, useMemo, useCallback } from 'react';
 import { deleteAccountAction, deleteMultipleAccountsAction } from '@/app/actions';
 import {
   AlertDialog,
@@ -64,10 +64,10 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
   const { activeBook } = useBooks();
   const [isSelectMode, setIsSelectMode] = useState(false);
 
-  const getCategoryName = (categoryId?: string) => {
+  const getCategoryName = useCallback((categoryId?: string) => {
     if (!categoryId) return 'Uncategorized';
     return categories.find((c) => c.id === categoryId)?.name || 'N/A';
-  };
+  }, [categories]);
   
   const [isPending, startTransition] = useTransition();
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
@@ -159,7 +159,7 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
     });
 
     return accounts;
-  }, [initialAccounts, searchTerm, sortDescriptor, categories, filter]);
+  }, [initialAccounts, searchTerm, sortDescriptor, filter, getCategoryName]);
 
   const handleSelect = (accountId: string, checked: boolean) => {
     if(checked) {
@@ -513,5 +513,4 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
 
     </div>
   );
-
 }
