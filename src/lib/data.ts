@@ -101,7 +101,7 @@ const handleError = (maybeError: any, context: string) => {
 
 const ensureDefaultBook = async (client?: SupabaseClient): Promise<void> => {
   const db = client ?? (await createClient());
-  const { data, error } = await db.from<DbBookRow>('books').select('id').limit(1);
+  const { data, error } = await db.from('books').select('id').limit(1);
   handleError(error, 'Failed to check books');
   if (data && data.length > 0) {
     return;
@@ -125,7 +125,7 @@ const ensureDefaultBook = async (client?: SupabaseClient): Promise<void> => {
 const ensureEquityCategory = async (bookId: string, client: SupabaseClient): Promise<DbCategoryRow> => {
   const equityId = `cat_equity_${bookId}`;
   const { data, error } = await client
-    .from<DbCategoryRow>('categories')
+    .from('categories')
     .select('*')
     .eq('id', equityId)
     .maybeSingle();
@@ -143,7 +143,7 @@ const getOpeningBalanceEquityAccount = async (bookId: string): Promise<Account> 
   const client = await createClient();
   const obeId = `acc_opening_balance_equity_${bookId}`;
   const { data, error } = await client
-    .from<DbAccountRow>('accounts')
+    .from('accounts')
     .select('*')
     .eq('id', obeId)
     .maybeSingle();
@@ -182,7 +182,7 @@ const normalizeBinRow = (item: BinItem) => {
 // --- Recycle Bin Helpers ---
 export const getRecycleBinItems = async (): Promise<any[]> => {
   const client = await createClient();
-  const { data, error } = await client.from<DbRecycleBinRow>('recycle_bin').select('*').order('deleted_at', { ascending: false });
+  const { data, error } = await client.from('recycle_bin').select('*').order('deleted_at', { ascending: false });
   handleError(error, 'Failed to fetch recycle bin');
   return (data ?? []).map((row) => ({ ...row.payload, type: row.entity_type, deletedAt: row.deleted_at }));
 };
@@ -272,7 +272,7 @@ export const deletePermanently = async (item: BinItem): Promise<void> => {
 
 const fetchTransactionsForBook = async (bookId: string, client: SupabaseClient) => {
   const { data, error } = await client
-    .from<DbTransactionWithEntries>('transactions')
+    .from('transactions')
     .select('id, book_id, date, description, highlight, entries:transaction_entries(id, transaction_id, account_id, amount, type, description)')
     .eq('book_id', bookId);
   handleError(error, 'Failed to fetch transactions');
@@ -283,7 +283,7 @@ const fetchTransactionsForBook = async (bookId: string, client: SupabaseClient) 
 export const getBooks = async (): Promise<Book[]> => {
   const client = await createClient();
   await ensureDefaultBook(client);
-  const { data, error } = await client.from<DbBookRow>('books').select('id, name').order('created_at', { ascending: true });
+  const { data, error } = await client.from('books').select('id, name').order('created_at', { ascending: true });
   handleError(error, 'Failed to fetch books');
   return (data ?? []).map(mapBook);
 };
@@ -295,7 +295,7 @@ export const addBook = async (name: string): Promise<Book> => {
     throw new Error('Book name cannot be empty.');
   }
   const { data: existing, error: existingError } = await client
-    .from<DbBookRow>('books')
+    .from('books')
     .select('id')
     .ilike('name', trimmed)
     .maybeSingle();
@@ -336,16 +336,16 @@ export const deleteBook = async (id: string): Promise<void> => {
     throw new Error('Cannot delete the default book.');
   }
   const client = await createClient();
-  const { data: book, error: bookError } = await client.from<DbBookRow>('books').select('*').eq('id', id).maybeSingle();
+  const { data: book, error: bookError } = await client.from('books').select('*').eq('id', id).maybeSingle();
   handleError(bookError, 'Failed to fetch book');
   if (!book) {
     throw new Error('Book not found.');
   }
 
   const transactions = await fetchTransactionsForBook(id, client);
-  const { data: accountsData, error: accountsError } = await client.from<DbAccountRow>('accounts').select('*').eq('book_id', id);
+  const { data: accountsData, error: accountsError } = await client.from('accounts').select('*').eq('book_id', id);
   handleError(accountsError, 'Failed to fetch accounts');
-  const { data: categoriesData, error: categoriesError } = await client.from<DbCategoryRow>('categories').select('*').eq('book_id', id);
+  const { data: categoriesData, error: categoriesError } = await client.from('categories').select('*').eq('book_id', id);
   handleError(categoriesError, 'Failed to fetch categories');
 
   await addToRecycleBin([
@@ -361,7 +361,7 @@ export const deleteBook = async (id: string): Promise<void> => {
 // --- Category Functions ---
 export const getCategories = async (bookId: string): Promise<Category[]> => {
   const client = await createClient();
-  const { data, error } = await client.from<DbCategoryRow>('categories').select('*').eq('book_id', bookId).order('name');
+  const { data, error } = await client.from('categories').select('*').eq('book_id', bookId).order('name');
   handleError(error, 'Failed to fetch categories');
   if ((!data || data.length === 0) && bookId === DEFAULT_BOOK_ID) {
     handleError(await client.from('categories').insert(DEFAULT_CATEGORY_SEEDS), 'Failed to seed default categories for book');
@@ -377,7 +377,7 @@ export const addCategory = async (bookId: string, name: string): Promise<Categor
     throw new Error('Category name cannot be empty.');
   }
   const { data: existing, error } = await client
-    .from<DbCategoryRow>('categories')
+    .from('categories')
     .select('id')
     .eq('book_id', bookId)
     .ilike('name', trimmed)
@@ -399,7 +399,7 @@ export const updateCategory = async (bookId: string, id: string, name: string): 
     throw new Error('Category name cannot be empty.');
   }
   const { data: duplicate, error } = await client
-    .from<DbCategoryRow>('categories')
+    .from('categories')
     .select('id')
     .eq('book_id', bookId)
     .neq('id', id)
@@ -419,13 +419,13 @@ export const deleteCategory = async (bookId: string, id: string): Promise<void> 
     throw new Error('Cannot delete the system-generated Equity category.');
   }
   const client = await createClient();
-  const { data: accounts, error } = await client.from<DbAccountRow>('accounts').select('id, category_id').eq('book_id', bookId).eq('category_id', id);
+  const { data: accounts, error } = await client.from('accounts').select('id, category_id').eq('book_id', bookId).eq('category_id', id);
   handleError(error, 'Failed to check category usage');
   if (accounts && accounts.length > 0) {
     throw new Error('Cannot delete category. It is currently assigned to one or more accounts.');
   }
 
-  const { data: categoryRow, error: catError } = await client.from<DbCategoryRow>('categories').select('*').eq('id', id).maybeSingle();
+  const { data: categoryRow, error: catError } = await client.from('categories').select('*').eq('id', id).maybeSingle();
   handleError(catError, 'Failed to fetch category');
   if (!categoryRow) {
     throw new Error('Category not found in this book.');
@@ -438,7 +438,7 @@ export const deleteCategory = async (bookId: string, id: string): Promise<void> 
 // --- Account Functions ---
 export const getAccounts = async (bookId: string): Promise<Account[]> => {
   const client = await createClient();
-  const { data, error } = await client.from<DbAccountRow>('accounts').select('*').eq('book_id', bookId).order('name');
+  const { data, error } = await client.from('accounts').select('*').eq('book_id', bookId).order('name');
   handleError(error, 'Failed to fetch accounts');
   return (data ?? []).map(mapAccount);
 };
@@ -454,7 +454,7 @@ export const addAccount = async (
   }
 
   const { data: existing, error } = await client
-    .from<DbAccountRow>('accounts')
+    .from('accounts')
     .select('id')
     .eq('book_id', bookId)
     .ilike('name', trimmedName)
@@ -499,7 +499,7 @@ export const updateAccount = async (
   data: Partial<Omit<Account, 'id' | 'bookId'>>,
 ): Promise<Account> => {
   const client = await createClient();
-  const { data: accountRow, error } = await client.from<DbAccountRow>('accounts').select('*').eq('id', accountId).eq('book_id', bookId).maybeSingle();
+  const { data: accountRow, error } = await client.from('accounts').select('*').eq('id', accountId).eq('book_id', bookId).maybeSingle();
   handleError(error, 'Failed to fetch account');
   if (!accountRow) {
     throw new Error('Account not found in this book.');
@@ -507,7 +507,7 @@ export const updateAccount = async (
 
   if (data.name && data.name !== accountRow.name) {
     const { data: duplicate, error: dupError } = await client
-      .from<DbAccountRow>('accounts')
+      .from('accounts')
       .select('id')
       .eq('book_id', bookId)
       .neq('id', accountId)
@@ -605,6 +605,73 @@ export const deleteAccount = async (bookId: string, id: string): Promise<void> =
   handleError(await client.from('accounts').delete().eq('id', id), 'Failed to delete account');
 };
 
+export const transferOpeningBalance = async (
+  sourceBookId: string,
+  targetBookId: string,
+  accountId: string,
+  accountName: string,
+  categoryId: string,
+  amount: number,
+  balanceType: 'debit' | 'credit',
+): Promise<void> => {
+  const client = await createClient();
+  
+  // Get source account's category name
+  const sourceCategories = await getCategories(sourceBookId);
+  const sourceCategory = sourceCategories.find(c => c.id === categoryId);
+  if (!sourceCategory) {
+    throw new Error('Source category not found.');
+  }
+
+  // Find or create category in target book
+  const targetCategories = await getCategories(targetBookId);
+  let targetCategory = targetCategories.find(c => c.name.toLowerCase() === sourceCategory.name.toLowerCase());
+  
+  if (!targetCategory) {
+    try {
+      targetCategory = await addCategory(targetBookId, sourceCategory.name);
+    } catch (error) {
+      // If category creation fails, try to find it again (race condition)
+      const refreshedCategories = await getCategories(targetBookId);
+      targetCategory = refreshedCategories.find(c => c.name.toLowerCase() === sourceCategory.name.toLowerCase());
+      if (!targetCategory) {
+        throw error;
+      }
+    }
+  }
+
+  // Find or create account in target book
+  const targetAccounts = await getAccounts(targetBookId);
+  let targetAccount = targetAccounts.find(a => a.name.toLowerCase() === accountName.toLowerCase() && !a.id.startsWith('acc_opening_balance_equity_'));
+  
+  if (!targetAccount) {
+    try {
+      targetAccount = await addAccount(targetBookId, {
+        name: accountName,
+        categoryId: targetCategory.id,
+      });
+    } catch (error) {
+      // If account creation fails (e.g., already exists), try to find it again
+      const refreshedAccounts = await getAccounts(targetBookId);
+      targetAccount = refreshedAccounts.find(a => a.name.toLowerCase() === accountName.toLowerCase() && !a.id.startsWith('acc_opening_balance_equity_'));
+      if (!targetAccount) {
+        throw error;
+      }
+    }
+  }
+
+  // Create opening balance transaction in target book
+  const obeAccount = await getOpeningBalanceEquityAccount(targetBookId);
+  await addTransaction(targetBookId, {
+    date: new Date().toISOString(),
+    description: 'OPENING BALANCE',
+    entries: [
+      { accountId: targetAccount.id, amount, type: balanceType },
+      { accountId: obeAccount.id, amount, type: balanceType === 'debit' ? 'credit' : 'debit' },
+    ],
+  });
+};
+
 export const deleteMultipleAccounts = async (bookId: string, accountIds: string[]): Promise<void> => {
   const client = await createClient();
   const accounts = await getAccounts(bookId);
@@ -639,7 +706,7 @@ export const deleteMultipleAccounts = async (bookId: string, accountIds: string[
 export const getTransactions = async (bookId: string): Promise<Transaction[]> => {
   const client = await createClient();
   const { data, error } = await client
-    .from<DbTransactionWithEntries>('transactions')
+    .from('transactions')
     .select('id, book_id, date, description, highlight, entries:transaction_entries(id, transaction_id, account_id, amount, type, description)')
     .eq('book_id', bookId)
     .order('date', { ascending: false })
@@ -746,7 +813,7 @@ export const updateTransactionHighlight = async (
 export const deleteTransaction = async (bookId: string, id: string): Promise<void> => {
   const client = await createClient();
   const { data, error } = await client
-    .from<DbTransactionWithEntries>('transactions')
+    .from('transactions')
     .select('id, book_id, date, description, highlight, entries:transaction_entries(id, transaction_id, account_id, amount, type, description)')
     .eq('id', id)
     .eq('book_id', bookId)
@@ -763,7 +830,7 @@ export const deleteTransaction = async (bookId: string, id: string): Promise<voi
 export const deleteMultipleTransactions = async (bookId: string, transactionIds: string[]): Promise<void> => {
   const client = await createClient();
   const { data, error } = await client
-    .from<DbTransactionWithEntries>('transactions')
+    .from('transactions')
     .select('id, book_id, date, description, highlight, entries:transaction_entries(id, transaction_id, account_id, amount, type, description)')
     .eq('book_id', bookId)
     .in('id', transactionIds);
@@ -781,7 +848,7 @@ export const deleteMultipleTransactions = async (bookId: string, transactionIds:
 export const getNotes = async (bookId: string): Promise<Note[]> => {
   const client = await createClient();
   const { data, error } = await client
-    .from<DbNoteRow>('notes')
+    .from('notes')
     .select('*')
     .eq('book_id', bookId)
     .order('created_at', { ascending: false });
@@ -820,7 +887,7 @@ export const updateNote = async (
       .eq('book_id', bookId),
     'Failed to update note',
   );
-  const { data: updated, error } = await client.from<DbNoteRow>('notes').select('*').eq('id', id).maybeSingle();
+  const { data: updated, error } = await client.from('notes').select('*').eq('id', id).maybeSingle();
   handleError(error, 'Failed to fetch updated note');
   if (!updated) {
     throw new Error('Note not found.');

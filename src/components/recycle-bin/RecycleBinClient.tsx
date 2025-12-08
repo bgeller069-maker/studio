@@ -53,7 +53,7 @@ const ItemDetails = ({ item }: { item: RecycledItem }) => {
 
     switch (item.type) {
         case 'transaction':
-            const amount = (item as Transaction).entries.find(e => e.type === 'debit')?.amount || 0;
+            const amount = ((item as unknown as Transaction).entries?.find(e => e.type === 'debit')?.amount) || 0;
             details = (
                 <span className="text-sm text-muted-foreground">
                     Amount: <span className="font-semibold text-foreground">{formatCurrency(amount)}</span>
@@ -97,7 +97,7 @@ export default function RecycleBinClient({ initialItems: rawItems }: RecycleBinC
     const categories: Category[] = [];
     rawItems.forEach(item => {
       if (item.type === 'category') {
-        categories.push(item as Category);
+        categories.push(item as unknown as Category);
       }
     });
     return categories;
@@ -106,7 +106,7 @@ export default function RecycleBinClient({ initialItems: rawItems }: RecycleBinC
   const initialItems = useMemo(() => {
     return rawItems.map(item => {
       if (item.type === 'account') {
-        const category = allCategories.find(c => c.id === (item as Account).categoryId);
+        const category = allCategories.find(c => c.id === (item as unknown as Account).categoryId);
         return { ...item, categoryName: category?.name || 'Unknown' };
       }
       return item;

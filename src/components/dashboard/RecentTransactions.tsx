@@ -14,7 +14,7 @@ import {
 import { formatCurrency, cn, formatDate } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '../ui/button';
-import { ArrowUpDown, Pencil, Trash2, ArrowRight, PlusCircle, ArrowLeftRight, Calendar as CalendarIcon, Scale, Users, MoreVertical, Folder, Settings, CheckSquare, X, Paintbrush, Strikethrough } from 'lucide-react';
+import { ArrowUpDown, Pencil, Trash2, ArrowRight, PlusCircle, ArrowLeftRight, Calendar as CalendarIcon, Scale, Users, MoreVertical, Folder, Settings, CheckSquare, X, Paintbrush, Strikethrough, Filter } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,6 +85,7 @@ export default function RecentTransactions({ transactions: initialTransactions, 
 
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>('all');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>(undefined);
+  const [highlightFilter, setHighlightFilter] = useState<HighlightColor | 'all'>('all');
 
   useEffect(() => {
     if (activeBook) {
@@ -210,6 +211,11 @@ export default function RecentTransactions({ transactions: initialTransactions, 
                  return txDate >= from && txDate <= to;
              });
         }
+
+        // Filter by highlight type
+        if (highlightFilter !== 'all') {
+            filtered = filtered.filter(tx => tx.highlight === highlightFilter);
+        }
     }
     
     const [sortField, sortDirection] = sortDescriptor.split('-') as ['date' | 'amount' | 'description', 'asc' | 'desc'];
@@ -240,7 +246,7 @@ export default function RecentTransactions({ transactions: initialTransactions, 
         return { transactions: sorted.slice(0, 5), openingBalanceTransactions: [] };
     }
     return { transactions: sorted, openingBalanceTransactions: opening };
-  }, [initialTransactions, isTransactionsPage, searchTerm, sortDescriptor, dateRangePreset, customDateRange, getAccountName]);
+  }, [initialTransactions, isTransactionsPage, searchTerm, sortDescriptor, dateRangePreset, customDateRange, highlightFilter, getAccountName]);
 
   const handleSelect = (transactionId: string, checked: boolean) => {
     if(checked) {
@@ -417,10 +423,42 @@ export default function RecentTransactions({ transactions: initialTransactions, 
           )}
         </div>
         {isTransactionsPage && (
-          <Button variant="outline" size="sm" onClick={toggleSelectMode}>
-            {isSelectMode ? <X className="mr-2 h-4 w-4" /> : <CheckSquare className="mr-2 h-4 w-4" />}
-            {isSelectMode ? 'Cancel' : 'Select'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filter
+                  {highlightFilter !== 'all' && (
+                    <Badge variant="secondary" className="ml-2 h-5 px-1.5">
+                      {highlightFilter === 'yellow' ? '1' : highlightFilter === 'blue' ? '2' : 'S'}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setHighlightFilter('all')}>
+                  <span className={cn("mr-2", highlightFilter === 'all' && 'font-semibold')}>All</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setHighlightFilter('yellow')}>
+                  <div className={cn("w-4 h-4 rounded-full bg-yellow-400 mr-2", highlightFilter === 'yellow' && 'ring-2 ring-offset-1')} />
+                  <span className={cn(highlightFilter === 'yellow' && 'font-semibold')}>1 (Yellow)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setHighlightFilter('blue')}>
+                  <div className={cn("w-4 h-4 rounded-full bg-blue-400 mr-2", highlightFilter === 'blue' && 'ring-2 ring-offset-1')} />
+                  <span className={cn(highlightFilter === 'blue' && 'font-semibold')}>2 (Blue)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setHighlightFilter('strikethrough')}>
+                  <Strikethrough className={cn("mr-2 h-4 w-4", highlightFilter === 'strikethrough' && 'font-semibold')} />
+                  <span className={cn(highlightFilter === 'strikethrough' && 'font-semibold')}>Strike</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="outline" size="sm" onClick={toggleSelectMode}>
+              {isSelectMode ? <X className="mr-2 h-4 w-4" /> : <CheckSquare className="mr-2 h-4 w-4" />}
+              {isSelectMode ? 'Cancel' : 'Select'}
+            </Button>
+          </div>
         )}
       </CardHeader>
       <CardContent>
@@ -477,7 +515,7 @@ export default function RecentTransactions({ transactions: initialTransactions, 
                                                      <Strikethrough className="mr-2 h-4 w-4"/> Strikethrough
                                                  </DropdownMenuItem>
                                                   {tx.highlight && (
-                                                      <DropdownMenuItem onClick={() => handleHighlight(tx.id, tx.highlight, tx.highlight)}>
+                                                      <DropdownMenuItem onClick={() => handleHighlight(tx.id, tx.highlight as HighlightColor, tx.highlight)}>
                                                           <X className="mr-2 h-4 w-4" /> Clear
                                                       </DropdownMenuItem>
                                                   )}

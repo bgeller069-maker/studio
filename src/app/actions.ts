@@ -2,7 +2,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addTransaction, addCategory, deleteTransaction, addAccount, deleteAccount, updateTransaction, updateTransactionHighlight, deleteMultipleAccounts, getBooks, addBook, updateBook, deleteBook, deleteCategory, updateAccount, deleteMultipleTransactions, restoreItem, deletePermanently, updateCategory, getNotes, addNote, updateNote, deleteNote } from '@/lib/data';
+import { addTransaction, addCategory, deleteTransaction, addAccount, deleteAccount, updateTransaction, updateTransactionHighlight, deleteMultipleAccounts, getBooks, addBook, updateBook, deleteBook, deleteCategory, updateAccount, deleteMultipleTransactions, restoreItem, deletePermanently, updateCategory, getNotes, addNote, updateNote, deleteNote, transferOpeningBalance } from '@/lib/data';
 import type { Transaction, Account, Note } from '@/lib/types';
 
 export async function createTransactionAction(bookId: string, data: Omit<Transaction, 'id' | 'date' | 'bookId'> & { date: Date }) {
@@ -261,4 +261,33 @@ export async function updateNoteAction(bookId: string, id: string, data: Partial
 export async function deleteNoteAction(bookId: string, id: string): Promise<void> {
     await deleteNote(bookId, id);
     revalidatePath('/');
+}
+
+export async function transferOpeningBalanceAction(params: {
+  sourceBookId: string;
+  targetBookId: string;
+  accountId: string;
+  accountName: string;
+  categoryId: string;
+  amount: number;
+  balanceType: 'debit' | 'credit';
+}) {
+  try {
+    await transferOpeningBalance(
+      params.sourceBookId,
+      params.targetBookId,
+      params.accountId,
+      params.accountName,
+      params.categoryId,
+      params.amount,
+      params.balanceType,
+    );
+    revalidatePath('/accounts');
+    revalidatePath('/transactions');
+    revalidatePath('/');
+    return { success: true, message: 'Opening balance transferred successfully.' };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return { success: false, message: `Failed to transfer opening balance: ${errorMessage}` };
+  }
 }

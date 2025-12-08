@@ -18,3 +18,5 @@ export const getSupabaseAdminClient = (): SupabaseClient => {
   });
 };
 
+
+

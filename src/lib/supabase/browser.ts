@@ -22,3 +22,5 @@ export const getSupabaseBrowserClient = (): SupabaseClient => {
   return browserClient;
 };
 
+
+

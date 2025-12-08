@@ -15,8 +15,8 @@ type LedgerEntry = {
   balance: number;
 };
 
-export default async function AccountLedgerPage({ params }: { params: { accountId: string } }) {
-  const { accountId } = params;
+export default async function AccountLedgerPage({ params }: { params: Promise<{ accountId: string }> }) {
+  const { accountId } = await params;
   const cookieStore = await cookies();
   const activeBookId = cookieStore.get('activeBookId')?.value || 'book_default';
 

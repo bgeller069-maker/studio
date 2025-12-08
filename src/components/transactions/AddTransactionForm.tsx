@@ -142,6 +142,10 @@ export default function AddTransactionForm({ accounts, categories, onFinished, i
     const finalValues = {
         ...values,
         description: values.useSeparateNarration ? '' : values.description,
+        entries: values.entries.map(entry => ({
+            ...entry,
+            amount: typeof entry.amount === 'string' ? parseFloat(entry.amount) || 0 : entry.amount
+        }))
     };
 
 
