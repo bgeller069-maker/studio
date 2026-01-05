@@ -360,5 +360,23 @@
     "categoryId": "cat_1760637820112",
     "openingBalance": 1215000,
     "openingBalanceType": "credit"
+  },
+  {
+    "id": "acc_1765562901091",
+    "bookId": "book_default",
+    "name": "ID ",
+    "categoryId": "cat_1760637847923"
+  },
+  {
+    "id": "acc_1765562946751",
+    "bookId": "book_default",
+    "name": "ID rr",
+    "categoryId": "cat_1760637847923"
+  },
+  {
+    "id": "acc_1765563921838",
+    "bookId": "book_default",
+    "name": "Mislanious",
+    "categoryId": "cat_cash"
   }
 ]

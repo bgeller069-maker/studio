@@ -2,7 +2,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { addTransaction, addCategory, deleteTransaction, addAccount, deleteAccount, updateTransaction, updateTransactionHighlight, deleteMultipleAccounts, getBooks, addBook, updateBook, deleteBook, deleteCategory, updateAccount, deleteMultipleTransactions, restoreItem, deletePermanently, updateCategory, getNotes, addNote, updateNote, deleteNote, transferOpeningBalance } from '@/lib/data';
+import { addTransaction, addCategory, deleteTransaction, addAccount, deleteAccount, updateTransaction, updateTransactionHighlight, deleteMultipleAccounts, getBooks, addBook, updateBook, deleteBook, deleteCategory, updateAccount, deleteMultipleTransactions, restoreItem, deletePermanently, updateCategory, getNotes, addNote, updateNote, deleteNote, transferOpeningBalance, exportAllData } from '@/lib/data';
 import type { Transaction, Account, Note } from '@/lib/types';
 
 export async function createTransactionAction(bookId: string, data: Omit<Transaction, 'id' | 'date' | 'bookId'> & { date: Date }) {
@@ -289,5 +289,16 @@ export async function transferOpeningBalanceAction(params: {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
     return { success: false, message: `Failed to transfer opening balance: ${errorMessage}` };
+  }
+}
+
+// --- Export Actions ---
+export async function exportAllDataAction() {
+  try {
+    const data = await exportAllData();
+    return { success: true, data };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return { success: false, message: `Failed to export data: ${errorMessage}` };
   }
 }

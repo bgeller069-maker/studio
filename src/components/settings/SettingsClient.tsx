@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Moon, Sun, Trash2, Book, Paintbrush, Home, Users, List } from 'lucide-react';
+import { ArrowLeft, Moon, Sun, Trash2, Book, Paintbrush, Home, Users, List, Download } from 'lucide-react';
 import Link from 'next/link';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import ManageBooks from './ManageBooks';
 import type { Book as BookType } from '@/lib/types';
 import { useBooks } from '@/context/BookContext';
+import { exportAllDataAction } from '@/app/actions';
 
 
 type Theme = 'light' | 'dark';
@@ -72,6 +73,48 @@ export default function SettingsClient({ initialBooks }: SettingsClientProps) {
       title: `Transaction view set to "${view === 'to_from' ? 'To/From' : 'Dr/Cr'}" for book: ${activeBook.name}`,
       description: "Refresh may be required for all views to update.",
     });
+  }
+
+  const handleExportData = async () => {
+    try {
+      toast({
+        title: "Exporting data...",
+        description: "Please wait while we prepare your export.",
+      });
+      
+      const result = await exportAllDataAction();
+      
+      if (!result.success) {
+        toast({
+          title: "Export failed",
+          description: result.message || "Failed to export data.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const dataStr = JSON.stringify(result.data, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ledger-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export successful",
+        description: "All table data has been exported to JSON file.",
+      });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
   }
 
   return (
@@ -153,6 +196,25 @@ export default function SettingsClient({ initialBooks }: SettingsClientProps) {
             </p>
              <Button variant="secondary" className="w-full" asChild>
                 <Link href="/recycle-bin">View Recycle Bin</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-4">
+            <Download className="w-8 h-8 text-primary" />
+            <div>
+              <CardTitle>Export Data</CardTitle>
+              <CardDescription>Export all the table data to JSON file.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col justify-center items-center text-center space-y-4 pt-6">
+            <p className="text-sm text-muted-foreground">
+                Download all your books, categories, accounts, transactions, notes, and recycle bin data as a JSON file.
+            </p>
+            <Button variant="secondary" className="w-full" onClick={handleExportData}>
+              <Download className="mr-2 h-4 w-4" />
+              Export to JSON
             </Button>
           </CardContent>
         </Card>

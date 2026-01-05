@@ -899,3 +899,50 @@ export const deleteNote = async (bookId: string, id: string): Promise<void> => {
   const client = await createClient();
   handleError(await client.from('notes').delete().eq('id', id).eq('book_id', bookId), 'Failed to delete note');
 };
+
+// --- Export Functions ---
+export const exportAllData = async () => {
+  const client = await createClient();
+  
+  // Fetch all books
+  const { data: booksData, error: booksError } = await client.from('books').select('*').order('created_at', { ascending: true });
+  handleError(booksError, 'Failed to fetch books');
+  const books = (booksData ?? []).map(mapBook);
+  
+  // Fetch all categories
+  const { data: categoriesData, error: categoriesError } = await client.from('categories').select('*').order('name');
+  handleError(categoriesError, 'Failed to fetch categories');
+  const categories = (categoriesData ?? []).map(mapCategory);
+  
+  // Fetch all accounts
+  const { data: accountsData, error: accountsError } = await client.from('accounts').select('*').order('name');
+  handleError(accountsError, 'Failed to fetch accounts');
+  const accounts = (accountsData ?? []).map(mapAccount);
+  
+  // Fetch all transactions with entries
+  const { data: transactionsData, error: transactionsError } = await client
+    .from('transactions')
+    .select('id, book_id, date, description, highlight, entries:transaction_entries(id, transaction_id, account_id, amount, type, description)')
+    .order('date', { ascending: false })
+    .order('created_at', { ascending: false });
+  handleError(transactionsError, 'Failed to fetch transactions');
+  const transactions = (transactionsData ?? []).map(mapTransaction);
+  
+  // Fetch all notes
+  const { data: notesData, error: notesError } = await client.from('notes').select('*').order('created_at', { ascending: false });
+  handleError(notesError, 'Failed to fetch notes');
+  const notes = (notesData ?? []).map(mapNote);
+  
+  // Fetch all recycle bin items
+  const recycleBinItems = await getRecycleBinItems();
+  
+  return {
+    books,
+    categories,
+    accounts,
+    transactions,
+    notes,
+    recycleBin: recycleBinItems,
+    exportedAt: new Date().toISOString(),
+  };
+};

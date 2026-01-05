@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Edit, PlusCircle, Trash2, ArrowUpDown, MoreVertical, Scale, ArrowLeftRight, Folder, Settings, CheckSquare, X, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Edit, PlusCircle, Trash2, ArrowUpDown, MoreVertical, Scale, ArrowLeftRight, Folder, Settings, CheckSquare, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Account, Category, Transaction } from '@/lib/types';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -37,7 +37,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Checkbox } from '../ui/checkbox';
 import { useBooks } from '@/context/BookContext';
 import EditAccountForm from './EditAccountForm';
-import OpenBalanceDialog from './OpenBalanceDialog';
 
 
 type AccountWithDetails = Account & {
@@ -73,7 +72,6 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
   const [isPending, startTransition] = useTransition();
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<InitialAccount | null>(null);
-  const [openBalanceAccount, setOpenBalanceAccount] = useState<InitialAccount | null>(null);
 
   const handleDelete = (accountId: string) => {
     if (!activeBook) return;
@@ -357,10 +355,6 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
                                   <Edit className="mr-2 h-4 w-4" />
                                   <span>Edit</span>
                               </DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => setOpenBalanceAccount(account)}>
-                                  <ArrowRight className="mr-2 h-4 w-4" />
-                                  <span>Open Balance</span>
-                              </DropdownMenuItem>
                               <AlertDialogTrigger asChild>
                                   <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
                                       <Trash2 className="mr-2 h-4 w-4" />
@@ -456,10 +450,6 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
                                           <Edit className="mr-2 h-4 w-4" />
                                           <span>Edit</span>
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => setOpenBalanceAccount(account)}>
-                                          <ArrowRight className="mr-2 h-4 w-4" />
-                                          <span>Open Balance</span>
-                                      </DropdownMenuItem>
                                        <AlertDialog>
                                           <AlertDialogTrigger asChild>
                                               <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
@@ -519,14 +509,6 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
             />
           </DialogContent>
         </Dialog>
-      )}
-
-      {openBalanceAccount && (
-        <OpenBalanceDialog
-          open={!!openBalanceAccount}
-          onOpenChange={(isOpen) => !isOpen && setOpenBalanceAccount(null)}
-          account={openBalanceAccount}
-        />
       )}
 
     </div>

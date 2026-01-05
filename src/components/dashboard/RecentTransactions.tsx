@@ -85,7 +85,7 @@ export default function RecentTransactions({ transactions: initialTransactions, 
 
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>('all');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>(undefined);
-  const [highlightFilter, setHighlightFilter] = useState<HighlightColor | 'all'>('all');
+  const [highlightFilter, setHighlightFilter] = useState<HighlightColor | 'all' | 'none'>('all');
 
   useEffect(() => {
     if (activeBook) {
@@ -214,7 +214,11 @@ export default function RecentTransactions({ transactions: initialTransactions, 
 
         // Filter by highlight type
         if (highlightFilter !== 'all') {
-            filtered = filtered.filter(tx => tx.highlight === highlightFilter);
+            if (highlightFilter === 'none') {
+                filtered = filtered.filter(tx => !tx.highlight);
+            } else {
+                filtered = filtered.filter(tx => tx.highlight === highlightFilter);
+            }
         }
     }
     
@@ -429,9 +433,14 @@ export default function RecentTransactions({ transactions: initialTransactions, 
                 <Button variant="outline" size="sm">
                   <Filter className="mr-2 h-4 w-4" />
                   Filter
-                  {highlightFilter !== 'all' && (
+                  {highlightFilter !== 'all' && highlightFilter !== 'none' && (
                     <Badge variant="secondary" className="ml-2 h-5 px-1.5">
                       {highlightFilter === 'yellow' ? '1' : highlightFilter === 'blue' ? '2' : 'S'}
+                    </Badge>
+                  )}
+                  {highlightFilter === 'none' && (
+                    <Badge variant="secondary" className="ml-2 h-5 px-1.5">
+                      N
                     </Badge>
                   )}
                 </Button>
@@ -451,6 +460,9 @@ export default function RecentTransactions({ transactions: initialTransactions, 
                 <DropdownMenuItem onClick={() => setHighlightFilter('strikethrough')}>
                   <Strikethrough className={cn("mr-2 h-4 w-4", highlightFilter === 'strikethrough' && 'font-semibold')} />
                   <span className={cn(highlightFilter === 'strikethrough' && 'font-semibold')}>Strike</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setHighlightFilter('none')}>
+                  <span className={cn("mr-2", highlightFilter === 'none' && 'font-semibold')}>No Mark</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -563,7 +575,7 @@ export default function RecentTransactions({ transactions: initialTransactions, 
           
           {/* Desktop Table View */}
           <div className="hidden md:block">
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
                    {isTransactionsPage && isSelectMode && (
@@ -574,14 +586,14 @@ export default function RecentTransactions({ transactions: initialTransactions, 
                       />
                     </TableHead>
                   )}
-                  <TableHead>
+                  <TableHead className="w-28">
                      Date
                   </TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead className="text-right">
+                  <TableHead className="text-right w-32">
                         Amount
                   </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right w-40">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -607,8 +619,8 @@ export default function RecentTransactions({ transactions: initialTransactions, 
                         <span className="text-red-600 font-semibold mx-2">{transactionView === 'dr_cr' ? 'Cr:' : 'From:'}</span> {tx.entries.filter(e => e.type === 'credit').map(e => getAccountName(e.accountId)).join(', ')}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">{formatCurrency(tx.entries.find(e => e.type === 'debit')?.amount || 0)}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-right w-32">{formatCurrency(tx.entries.find(e => e.type === 'debit')?.amount || 0)}</TableCell>
+                    <TableCell className="w-40">
                       <div className="flex items-center justify-end gap-1" style={{ opacity: isHighlightingCurrent ? 0.5 : 1 }}>
                         <Button
                             variant="outline"

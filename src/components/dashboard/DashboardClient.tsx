@@ -30,7 +30,9 @@ export default function DashboardClient({ initialTransactions, accounts, categor
   const { isLoading: isBookLoading, activeBook } = useBooks();
   const [isAddTxSheetOpen, setAddTxSheetOpen] = useState(false);
   
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(categories[0]?.id);
+  // Default to "Cash & Bank" category, fallback to first category if not found
+  const defaultCategory = categories.find(c => c.name === 'Cash & Bank') || categories[0];
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(defaultCategory?.id);
   const router = useRouter();
 
   const stats = useMemo(() => {

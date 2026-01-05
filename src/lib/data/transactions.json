@@ -1,5 +1,656 @@
 [
   {
+    "description": "CASH TO BHU @ NARAYAN JI TAP",
+    "date": "2025-12-08T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760758698028",
+        "type": "debit",
+        "amount": 3000000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484492379",
+        "type": "credit",
+        "amount": 3000000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765564623689",
+    "bookId": "book_default"
+  },
+  {
+    "description": "GAVE RR @ MIRCHISETH",
+    "date": "2025-11-23T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760759903192",
+        "type": "debit",
+        "amount": 3000000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484492379",
+        "type": "credit",
+        "amount": 3000000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765564203047",
+    "bookId": "book_default"
+  },
+  {
+    "description": "REC FOM PH GVC",
+    "date": "2025-11-26T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484492379",
+        "type": "debit",
+        "amount": 61000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760488663682",
+        "type": "credit",
+        "amount": 61000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765564141913",
+    "bookId": "book_default"
+  },
+  {
+    "description": "MANSIB=NGH JO SHADI",
+    "date": "2025-11-26T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1761135759679",
+        "type": "debit",
+        "amount": 5100,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484492379",
+        "type": "credit",
+        "amount": 5100,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765564084958",
+    "bookId": "book_default"
+  },
+  {
+    "description": "CASH REC FROM NKB",
+    "date": "2025-11-26T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484492379",
+        "type": "debit",
+        "amount": 122000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1762156845760",
+        "type": "credit",
+        "amount": 122000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765564048996",
+    "bookId": "book_default"
+  },
+  {
+    "description": "MISLANIUS",
+    "date": "2025-11-29T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1765563921838",
+        "type": "debit",
+        "amount": 146540,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484492379",
+        "type": "credit",
+        "amount": 146540,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563940821",
+    "bookId": "book_default"
+  },
+  {
+    "description": "REC FROM NEERAJ JI VC\n",
+    "date": "2025-11-29T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484492379",
+        "type": "debit",
+        "amount": 1048000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1762369033001",
+        "type": "credit",
+        "amount": 1048000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563867455",
+    "bookId": "book_default"
+  },
+  {
+    "description": "CAH REC FROM HMTA",
+    "date": "2025-11-29T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484492379",
+        "type": "debit",
+        "amount": 2500000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760759179925",
+        "type": "credit",
+        "amount": 2500000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563828076",
+    "bookId": "book_default"
+  },
+  {
+    "description": "CASH GIEVN TO 019",
+    "date": "2025-11-30T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1761227443314",
+        "type": "debit",
+        "amount": 100000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484492379",
+        "type": "credit",
+        "amount": 100000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563759878",
+    "bookId": "book_default"
+  },
+  {
+    "description": "CASH REC MAHESH\n",
+    "date": "2025-11-30T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484492379",
+        "type": "debit",
+        "amount": 2000000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484541813",
+        "type": "credit",
+        "amount": 2000000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563725311",
+    "bookId": "book_default"
+  },
+  {
+    "description": "CASH PAID TO NS13",
+    "date": "2025-12-01T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1762421624846",
+        "type": "debit",
+        "amount": 1250000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484492379",
+        "type": "credit",
+        "amount": 1250000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563678499",
+    "bookId": "book_default"
+  },
+  {
+    "description": "pintu lodha 9\"",
+    "date": "2025-12-02T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484492379",
+        "type": "debit",
+        "amount": 14400,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1761135759679",
+        "type": "credit",
+        "amount": 14400,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563652294",
+    "bookId": "book_default"
+  },
+  {
+    "description": "ns 13 se liye",
+    "date": "2025-12-03T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484492379",
+        "type": "debit",
+        "amount": 50000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1762421624846",
+        "type": "credit",
+        "amount": 50000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563611011",
+    "bookId": "book_default"
+  },
+  {
+    "description": "paid to miesn agians right angle stine",
+    "date": "2025-12-03T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484514093",
+        "type": "debit",
+        "amount": 30000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484492379",
+        "type": "credit",
+        "amount": 30000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563584202",
+    "bookId": "book_default"
+  },
+  {
+    "description": "CAH PAID AMIT VADA PAV RR",
+    "date": "2025-12-04T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760759903192",
+        "type": "debit",
+        "amount": 600000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484492379",
+        "type": "credit",
+        "amount": 600000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563533449",
+    "bookId": "book_default"
+  },
+  {
+    "description": "CASH PAID TO MURLI",
+    "date": "2025-12-07T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1761227443314",
+        "type": "debit",
+        "amount": 200000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484492379",
+        "type": "credit",
+        "amount": 200000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563461813",
+    "bookId": "book_default"
+  },
+  {
+    "description": "BHU REC HM HISAB 50",
+    "date": "2025-11-21T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484514093",
+        "type": "debit",
+        "amount": 5000000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760758698028",
+        "type": "credit",
+        "amount": 5000000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563287606",
+    "bookId": "book_default"
+  },
+  {
+    "description": "mohit to rr\n",
+    "date": "2025-11-24T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760759903192",
+        "type": "debit",
+        "amount": 100000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1762366052658",
+        "type": "credit",
+        "amount": 100000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563232191",
+    "bookId": "book_default"
+  },
+  {
+    "description": "DJ TO NS 13\n",
+    "date": "2025-12-07T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1762421624846",
+        "type": "debit",
+        "amount": 500000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1761227443314",
+        "type": "credit",
+        "amount": 500000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563146299",
+    "bookId": "book_default"
+  },
+  {
+    "description": "MAHES TO MIRCHI STH",
+    "date": "2025-12-10T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760759903192",
+        "type": "debit",
+        "amount": 1500000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484541813",
+        "type": "credit",
+        "amount": 1500000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563112497",
+    "bookId": "book_default"
+  },
+  {
+    "description": "MAHESH TO HM",
+    "date": "2025-12-09T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484514093",
+        "type": "debit",
+        "amount": 2800000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484541813",
+        "type": "credit",
+        "amount": 2800000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563082296",
+    "bookId": "book_default"
+  },
+  {
+    "description": "CSAH FROM SUB TO HM",
+    "date": "2025-12-07T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484514093",
+        "type": "debit",
+        "amount": 50000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1761135513936",
+        "type": "credit",
+        "amount": 50000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563053339",
+    "bookId": "book_default"
+  },
+  {
+    "description": "HM TO SUB",
+    "date": "2025-12-05T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1761135513936",
+        "type": "debit",
+        "amount": 150000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484514093",
+        "type": "credit",
+        "amount": 150000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765563022656",
+    "bookId": "book_default"
+  },
+  {
+    "description": "from id tp vicky ac",
+    "date": "2025-11-29T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760638196154",
+        "type": "debit",
+        "amount": 166644,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1765562946751",
+        "type": "credit",
+        "amount": 166644,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765562994078",
+    "bookId": "book_default"
+  },
+  {
+    "description": "GOLU TRNASFER TO HM",
+    "date": "2025-11-29T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1762421624846",
+        "type": "debit",
+        "amount": 506575,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484514093",
+        "type": "credit",
+        "amount": 506575,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765562828795",
+    "bookId": "book_default"
+  },
+  {
+    "description": "DI TO HM TRANSFER",
+    "date": "2025-11-27T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1761227443314",
+        "type": "debit",
+        "amount": 460000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484514093",
+        "type": "credit",
+        "amount": 460000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765562670360",
+    "bookId": "book_default"
+  },
+  {
+    "description": "DINESH PUFASA SHADI PAID BU HM",
+    "date": "2025-11-27T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760484514093",
+        "type": "debit",
+        "amount": 532500,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1762149613596",
+        "type": "credit",
+        "amount": 532500,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765562629040",
+    "bookId": "book_default"
+  },
+  {
+    "description": "GOLD BUY VICKY HISAB GOLD 128800 200ML",
+    "date": "2025-11-27T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760638196154",
+        "type": "debit",
+        "amount": 2576,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1761226898210",
+        "type": "credit",
+        "amount": 2576,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765562582881",
+    "bookId": "book_default"
+  },
+  {
+    "description": "CAH PAID BY VICKY BHAYAI\\IA TO VICKY",
+    "date": "2025-11-27T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760638196154",
+        "type": "debit",
+        "amount": 200000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1761179833281",
+        "type": "credit",
+        "amount": 200000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1765562520767",
+    "bookId": "book_default"
+  },
+  {
+    "description": "Bm to mirchi rr\n",
+    "date": "2025-11-25T13:12:24.652Z",
+    "entries": [
+      {
+        "accountId": "acc_1760759903192",
+        "type": "debit",
+        "amount": 285000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1763363671757",
+        "type": "credit",
+        "amount": 285000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1764076378053",
+    "bookId": "book_default"
+  },
+  {
+    "description": "Cash paid to rr mirchi by shekavat adjusted in vc",
+    "date": "2025-11-17T18:30:00.000Z",
+    "entries": [
+      {
+        "accountId": "acc_1760759903192",
+        "type": "debit",
+        "amount": 200000,
+        "description": ""
+      },
+      {
+        "accountId": "acc_1760484514093",
+        "type": "credit",
+        "amount": 200000,
+        "description": ""
+      }
+    ],
+    "useSeparateNarration": false,
+    "id": "txn_1764076229924",
+    "bookId": "book_default"
+  },
+  {
     "description": "Cash paid to yyrr by rr from ashok gandhi",
     "date": "2025-11-18T15:15:31.867Z",
     "entries": [
