@@ -4,15 +4,14 @@
 import { useState } from 'react';
 import type { Account, Category } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Folder, PlusCircle, Settings, List, Users, MoreVertical, ArrowLeft, LogOut } from 'lucide-react';
+import { Folder, PlusCircle, Settings, List, Users, ArrowLeft, LogOut } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AddTransactionForm from '@/components/transactions/AddTransactionForm';
 import Link from 'next/link';
 import { useBooks } from '@/context/BookContext';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { usePathname } from 'next/navigation';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { usePathname, useRouter } from 'next/navigation';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 type HeaderProps = {
   accounts?: Account[];
@@ -23,8 +22,23 @@ type HeaderProps = {
 export default function Header({ accounts = [], categories = [], backHref }: HeaderProps) {
   const { activeBook } = useBooks();
   const [isAddTxSheetOpen, setAddTxSheetOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const isDashboard = pathname === '/';
+
+  async function handleLogout() {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      const supabase = getSupabaseBrowserClient();
+      await supabase.auth.signOut();
+      router.refresh();
+      router.push('/login');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
 
   return (
     <>
@@ -73,6 +87,10 @@ export default function Header({ accounts = [], categories = [], backHref }: Hea
                     <span className="sr-only">Settings</span>
                   </Link>
                 </Button>
+                <Button variant="ghost" size="icon" onClick={handleLogout} disabled={isLoggingOut} title="Sign out">
+                  <LogOut className="h-4 w-4" />
+                  <span className="sr-only">Sign out</span>
+                </Button>
               </div>
 
               {!isDashboard && (
@@ -81,48 +99,6 @@ export default function Header({ accounts = [], categories = [], backHref }: Hea
                   ADD NEW
                 </Button>
               )}
-              
-               {/* Mobile Menu */}
-              <div className="md:hidden">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical />
-                      <span className="sr-only">Open menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {isDashboard && (
-                      <>
-                        <DropdownMenuItem asChild>
-                          <Link href="/transactions">
-                            <List className="mr-2 h-4 w-4" />
-                            <span>All Transactions</span>
-                          </Link>
-                        </DropdownMenuItem>
-                         <DropdownMenuItem asChild>
-                          <Link href="/accounts">
-                            <Users className="mr-2 h-4 w-4" />
-                            <span>All Accounts</span>
-                          </Link>
-                        </DropdownMenuItem>
-                         <DropdownMenuItem asChild>
-                          <Link href="/categories">
-                            <Folder className="mr-2 h-4 w-4" />
-                             <span>All Categories</span>
-                          </Link>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    <DropdownMenuItem asChild>
-                       <Link href="/settings">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Settings</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
             </div>
           </div>
         </div>

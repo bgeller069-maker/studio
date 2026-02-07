@@ -60,28 +60,16 @@ export default function SettingsClient({ initialBooks }: SettingsClientProps) {
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
     document.documentElement.classList.toggle('dark', isDark);
-    toast({
-      title: `Theme changed to ${newTheme}`,
-    });
   };
   
   const handleTransactionViewChange = (view: TransactionView) => {
     if (!activeBook) return;
     setTransactionView(view);
     localStorage.setItem(`transactionView_${activeBook.id}`, view);
-    toast({
-      title: `Transaction view set to "${view === 'to_from' ? 'To/From' : 'Dr/Cr'}" for book: ${activeBook.name}`,
-      description: "Refresh may be required for all views to update.",
-    });
   }
 
   const handleExportData = async () => {
     try {
-      toast({
-        title: "Exporting data...",
-        description: "Please wait while we prepare your export.",
-      });
-      
       const result = await exportAllDataAction();
       
       if (!result.success) {
@@ -103,11 +91,6 @@ export default function SettingsClient({ initialBooks }: SettingsClientProps) {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-
-      toast({
-        title: "Export successful",
-        description: "All table data has been exported to JSON file.",
-      });
     } catch (error) {
       toast({
         title: "Export failed",
@@ -123,7 +106,7 @@ export default function SettingsClient({ initialBooks }: SettingsClientProps) {
         <div className="flex items-center gap-4">
             
             <h1 className="text-3xl font-headline">Settings</h1>
-            <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2">
                 <Button variant="outline" size="icon" asChild>
                     <Link href="/"><Home /></Link>
                 </Button>

@@ -175,15 +175,8 @@ export default function RecycleBinClient({ initialItems: rawItems }: RecycleBinC
               action === 'restore' ? restoreItemAction(item) : deletePermanentlyAction(item)
           ));
 
-          const successes = results.filter(r => r.success).length;
-          const failures = results.length - successes;
+          const failures = results.length - results.filter(r => r.success).length;
 
-          if (successes > 0) {
-              toast({
-                  title: 'Success',
-                  description: `${successes} item(s) ${action === 'restore' ? 'restored' : 'deleted'}.`,
-              });
-          }
           if (failures > 0) {
               toast({
                   title: 'Error',

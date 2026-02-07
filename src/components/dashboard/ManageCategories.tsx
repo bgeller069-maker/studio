@@ -33,7 +33,6 @@ export default function ManageCategories({ categories }: { categories: Category[
       if (result.success) {
         setNewCategoryName("");
         setOpen(false);
-        toast({ title: 'Success', description: `Category '${newCategoryName}' created.` });
       } else {
         toast({ title: 'Error', description: result.message, variant: 'destructive' });
       }

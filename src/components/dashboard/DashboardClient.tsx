@@ -2,7 +2,7 @@
 'use client';
 
 import type { Account, Category, Transaction } from '@/lib/types';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Folder, PlusCircle, Settings, List, Users, MoreVertical } from 'lucide-react';
 import { Logo } from '@/components/icons/Logo';
@@ -20,6 +20,13 @@ import { useRouter } from 'next/navigation';
 import { Combobox } from '../ui/combobox';
 import Notes from './Notes';
 
+/** Default category: "Cash & Bank" only when present, otherwise first category */
+function getDefaultCategoryId(categories: Category[]): string | undefined {
+  if (!categories.length) return undefined;
+  const cashAndBank = categories.find(c => c.name === 'Cash & Bank');
+  return (cashAndBank || categories[0])?.id;
+}
+
 type DashboardClientProps = {
   initialTransactions: Transaction[];
   accounts: Account[];
@@ -29,11 +36,26 @@ type DashboardClientProps = {
 export default function DashboardClient({ initialTransactions, accounts, categories }: DashboardClientProps) {
   const { isLoading: isBookLoading, activeBook } = useBooks();
   const [isAddTxSheetOpen, setAddTxSheetOpen] = useState(false);
-  
-  // Default to "Cash & Bank" category, fallback to first category if not found
-  const defaultCategory = categories.find(c => c.name === 'Cash & Bank') || categories[0];
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(defaultCategory?.id);
+  const defaultCategoryId = getDefaultCategoryId(categories);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(defaultCategoryId);
   const router = useRouter();
+
+  const prevBookIdRef = useRef<string | null>(null);
+
+  // When book or categories change (e.g. after switching book and router.refresh()), sync selection
+  // so CategoryAccounts stays visible with a valid category (Cash/Capital by default).
+  useEffect(() => {
+    const defaultId = getDefaultCategoryId(categories);
+    if (!defaultId) return;
+    const bookId = activeBook?.id ?? null;
+    if (prevBookIdRef.current !== bookId) {
+      prevBookIdRef.current = bookId;
+      setSelectedCategoryId(defaultId);
+      return;
+    }
+    const currentValid = categories.some(c => c.id === selectedCategoryId);
+    if (!currentValid) setSelectedCategoryId(defaultId);
+  }, [activeBook?.id, categories, selectedCategoryId]);
 
   const stats = useMemo(() => {
     const totalDebit = initialTransactions.flatMap(t => t.entries).filter(e => e.type === 'debit').reduce((sum, e) => sum + e.amount, 0);
@@ -89,10 +111,10 @@ export default function DashboardClient({ initialTransactions, accounts, categor
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
             <div className="space-y-8">
-               {selectedCategoryName && stats.accountsInSelectedCategory && (
+               {selectedCategoryName && (
                 <CategoryAccounts
                     categoryName={selectedCategoryName}
-                    accounts={stats.accountsInSelectedCategory}
+                    accounts={stats.accountsInSelectedCategory ?? []}
                     categories={categories}
                     selectedCategoryId={selectedCategoryId}
                     onCategoryChange={setSelectedCategoryId}

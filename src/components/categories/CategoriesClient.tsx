@@ -62,9 +62,7 @@ export default function CategoriesClient({ categories, allCategories }: Categori
     if (!activeBook) return;
     startTransition(async () => {
       const result = await deleteCategoryAction(activeBook.id, categoryId);
-      if (result.success) {
-        toast({ title: "Success", description: result.message });
-      } else {
+      if (!result.success) {
         toast({ title: "Error", description: result.message, variant: "destructive" });
       }
     });
@@ -80,7 +78,6 @@ export default function CategoriesClient({ categories, allCategories }: Categori
     startTransition(async () => {
         const result = await updateCategoryAction(activeBook.id, editingCategory.id, editingCategoryName);
          if (result.success) {
-            toast({ title: "Success", description: result.message });
             setEditingCategory(null);
         } else {
             toast({ title: "Error", description: result.message, variant: "destructive" });
@@ -95,7 +92,6 @@ export default function CategoriesClient({ categories, allCategories }: Categori
       if (result.success) {
         setNewCategoryName("");
         setIsAddDialogOpen(false);
-        toast({ title: "Success", description: result.message });
       } else {
         toast({ title: "Error", description: result.message, variant: "destructive" });
       }
@@ -108,7 +104,7 @@ export default function CategoriesClient({ categories, allCategories }: Categori
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
             <h1 className="text-3xl font-headline">Categories</h1>
-             <div className="flex items-center gap-2">
+             <div className="hidden md:flex items-center gap-2">
                 <Button variant="outline" size="icon" asChild>
                     <Link href="/"><Home /></Link>
                 </Button>

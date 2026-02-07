@@ -24,15 +24,29 @@ export default function Notes() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
 
+  // Fetch notes when book id changes. Ignore stale responses so a late fetch for
+  // the previous book doesn't overwrite notes after switching books (e.g. after router.refresh()).
   useEffect(() => {
-    if (activeBook) {
-      setIsLoading(true);
-      getNotesAction(activeBook.id).then(fetchedNotes => {
-        setNotes(fetchedNotes);
-        setIsLoading(false);
-      });
+    const bookId = activeBook?.id;
+    setEditingNoteId(null);
+    setEditingText('');
+    if (!bookId) {
+      setNotes([]);
+      setIsLoading(false);
+      return;
     }
-  }, [activeBook]);
+    let cancelled = false;
+    setIsLoading(true);
+    getNotesAction(bookId).then(fetchedNotes => {
+      if (!cancelled) {
+        setNotes(fetchedNotes);
+      }
+      setIsLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeBook?.id]);
 
 
   const handleAddNote = () => {

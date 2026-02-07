@@ -51,10 +51,6 @@ export default function EditAccountForm({ account, categories, onFinished, openi
     startTransition(async () => {
       const result = await updateAccountAction(activeBook.id, account.id, values);
       if (result.success) {
-        toast({
-          title: 'Success',
-          description: result.message,
-        });
         onFinished();
       } else {
         if (result.message?.toLowerCase().includes('already exists')) {

@@ -672,6 +672,77 @@ export const transferOpeningBalance = async (
   });
 };
 
+/** Transfer balance from an account in source book to an account in target book. Reduces source and adds to target. */
+export const transferBalanceBetweenBooks = async (
+  sourceBookId: string,
+  targetBookId: string,
+  sourceAccountId: string,
+  sourceAccountName: string,
+  sourceCategoryId: string,
+  amount: number,
+  balanceType: 'debit' | 'credit',
+  targetAccountId?: string,
+): Promise<void> => {
+  if (sourceBookId === targetBookId) {
+    throw new Error('Source and target book must be different.');
+  }
+  if (amount <= 0) {
+    throw new Error('Transfer amount must be greater than zero.');
+  }
+
+  const books = await getBooks();
+  const targetBook = books.find((b) => b.id === targetBookId);
+  const targetBookName = targetBook?.name ?? 'Other book';
+
+  const sourceObe = await getOpeningBalanceEquityAccount(sourceBookId);
+
+  // Source book: reduce balance — credit source + debit OBE for debit balance; debit source + credit OBE for credit balance
+  await addTransaction(sourceBookId, {
+    date: new Date().toISOString(),
+    description: `Transfer to ${targetBookName}`,
+    entries: [
+      { accountId: sourceAccountId, amount, type: balanceType === 'debit' ? 'credit' : 'debit' },
+      { accountId: sourceObe.id, amount, type: balanceType === 'debit' ? 'debit' : 'credit' },
+    ],
+  });
+
+  const sourceCategories = await getCategories(sourceBookId);
+  const sourceCategory = sourceCategories.find((c) => c.id === sourceCategoryId);
+  if (!sourceCategory) {
+    throw new Error('Source category not found.');
+  }
+
+  let targetAccount: Account;
+  if (targetAccountId) {
+    const targetAccounts = await getAccounts(targetBookId);
+    const found = targetAccounts.find((a) => a.id === targetAccountId);
+    if (!found) throw new Error('Target account not found.');
+    targetAccount = found;
+  } else {
+    const targetCategories = await getCategories(targetBookId);
+    let targetCategory = targetCategories.find((c) => c.name.toLowerCase() === sourceCategory.name.toLowerCase());
+    if (!targetCategory) {
+      targetCategory = await addCategory(targetBookId, sourceCategory.name);
+    }
+    const targetAccounts = await getAccounts(targetBookId);
+    let acc = targetAccounts.find((a) => a.name.toLowerCase() === sourceAccountName.toLowerCase() && !a.id.startsWith('acc_opening_balance_equity_'));
+    if (!acc) {
+      acc = await addAccount(targetBookId, { name: sourceAccountName, categoryId: targetCategory.id });
+    }
+    targetAccount = acc;
+  }
+
+  const targetObe = await getOpeningBalanceEquityAccount(targetBookId);
+  await addTransaction(targetBookId, {
+    date: new Date().toISOString(),
+    description: 'Transfer from another book',
+    entries: [
+      { accountId: targetAccount.id, amount, type: balanceType },
+      { accountId: targetObe.id, amount, type: balanceType === 'debit' ? 'credit' : 'debit' },
+    ],
+  });
+};
+
 export const deleteMultipleAccounts = async (bookId: string, accountIds: string[]): Promise<void> => {
   const client = await createClient();
   const accounts = await getAccounts(bookId);

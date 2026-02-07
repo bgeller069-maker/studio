@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { getBooks } from '@/lib/data';
 import { BookProvider } from '@/context/BookContext';
-import Header from '@/components/layout/Header';
+import BottomNav from '@/components/layout/BottomNav';
 import { Inter, Playfair_Display } from 'next/font/google';
 
 const inter = Inter({
@@ -31,7 +31,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialBooks = await getBooks();
+  let initialBooks: Awaited<ReturnType<typeof getBooks>> = [];
+  try {
+    initialBooks = await getBooks();
+  } catch {
+    // Not logged in or RLS blocks access; login page and other auth flows don't need books.
+  }
 
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${playfair.variable}`}>
@@ -40,7 +45,10 @@ export default async function RootLayout({
       </head>
       <body className="font-body antialiased">
             <BookProvider initialBooks={initialBooks}>
-              {children}
+              <div className="pb-16 md:pb-0 min-h-screen">
+                {children}
+              </div>
+              <BottomNav />
             </BookProvider>
             <Toaster />
       </body>

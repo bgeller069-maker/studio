@@ -32,7 +32,7 @@ export default function CategoryAccounts({ categoryName, accounts, categories, s
         <Card>
             <CardHeader>
                 <CardTitle>
-                     <Select onValueChange={onCategoryChange} defaultValue={selectedCategoryId}>
+                     <Select value={selectedCategoryId ?? ''} onValueChange={onCategoryChange}>
                         <SelectTrigger className="border-none !bg-transparent p-0 h-auto focus:ring-0 focus:ring-offset-0 w-auto text-2xl font-semibold leading-none tracking-tight">
                             <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
@@ -61,7 +61,7 @@ export default function CategoryAccounts({ categoryName, accounts, categories, s
     <Card>
       <CardHeader>
         <CardTitle>
-            <Select onValueChange={onCategoryChange} defaultValue={selectedCategoryId}>
+            <Select value={selectedCategoryId ?? ''} onValueChange={onCategoryChange}>
                 <SelectTrigger className="border-none !bg-transparent p-0 h-auto focus:ring-0 focus:ring-offset-0 w-auto text-2xl font-semibold leading-none tracking-tight">
                     <SelectValue placeholder="Select a category" />
                 </SelectTrigger>

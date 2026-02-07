@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { FilePenLine, Save, Pencil, X } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card, CardContent } from '../ui/card';
@@ -19,7 +18,6 @@ export default function AccountNotesDisplay({ accountId }: AccountNotesDisplayPr
   const [isEditing, setIsEditing] = useState(false);
   const [tempNotes, setTempNotes] = useState('');
 
-  const { toast } = useToast();
   const storageKey = `account_notes_${accountId}`;
 
   useEffect(() => {
@@ -34,10 +32,6 @@ export default function AccountNotesDisplay({ accountId }: AccountNotesDisplayPr
   const handleSave = () => {
     localStorage.setItem(storageKey, tempNotes);
     setNotes(tempNotes);
-    toast({
-      title: 'Notes Saved',
-      description: 'Your notes for this account have been saved locally.',
-    });
     setIsEditing(false);
   };
   

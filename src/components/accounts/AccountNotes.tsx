@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { FilePenLine } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
@@ -17,7 +16,6 @@ export default function AccountNotes({ accountId }: AccountNotesProps) {
   const [notes, setNotes] = useState('');
   const [isMounted, setIsMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const { toast } = useToast();
 
   const storageKey = `account_notes_${accountId}`;
 
@@ -31,10 +29,6 @@ export default function AccountNotes({ accountId }: AccountNotesProps) {
 
   const handleSave = () => {
     localStorage.setItem(storageKey, notes);
-    toast({
-      title: 'Notes Saved',
-      description: 'Your notes for this account have been saved locally.',
-    });
     setIsOpen(false);
   };
 

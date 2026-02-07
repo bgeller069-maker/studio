@@ -12,11 +12,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Edit, PlusCircle, Trash2, ArrowUpDown, MoreVertical, Scale, ArrowLeftRight, Folder, Settings, CheckSquare, X } from 'lucide-react';
+import { ArrowLeft, Edit, PlusCircle, Trash2, ArrowUpDown, MoreVertical, Scale, ArrowLeftRight, Folder, Settings, CheckSquare, X, ArrowRightLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Account, Category, Transaction } from '@/lib/types';
 import { formatCurrency, cn } from '@/lib/utils';
 import { useTransition, useState, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { deleteAccountAction, deleteMultipleAccountsAction } from '@/app/actions';
 import {
   AlertDialog,
@@ -37,6 +38,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Checkbox } from '../ui/checkbox';
 import { useBooks } from '@/context/BookContext';
 import EditAccountForm from './EditAccountForm';
+import TransferBalanceDialog from './TransferBalanceDialog';
 
 
 type AccountWithDetails = Account & {
@@ -62,6 +64,7 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [filter, setFilter] = useState('all');
   const { activeBook } = useBooks();
+  const router = useRouter();
   const [isSelectMode, setIsSelectMode] = useState(false);
 
   const getCategoryName = useCallback((categoryId?: string) => {
@@ -72,6 +75,7 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
   const [isPending, startTransition] = useTransition();
   const [isAddSheetOpen, setAddSheetOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<InitialAccount | null>(null);
+  const [transferAccount, setTransferAccount] = useState<InitialAccount | null>(null);
 
   const handleDelete = (accountId: string) => {
     if (!activeBook) return;
@@ -189,7 +193,7 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
             <h1 className="text-3xl font-headline">Accounts</h1>
-            <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2">
                 <Button variant="outline" size="icon" asChild>
                     <Link href="/"><Scale /></Link>
                 </Button>
@@ -355,6 +359,10 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
                                   <Edit className="mr-2 h-4 w-4" />
                                   <span>Edit</span>
                               </DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setTransferAccount(account)}>
+                                  <ArrowRightLeft className="mr-2 h-4 w-4" />
+                                  <span>Transfer balance</span>
+                              </DropdownMenuItem>
                               <AlertDialogTrigger asChild>
                                   <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
                                       <Trash2 className="mr-2 h-4 w-4" />
@@ -450,6 +458,10 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
                                           <Edit className="mr-2 h-4 w-4" />
                                           <span>Edit</span>
                                       </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setTransferAccount(account)}>
+                                          <ArrowRightLeft className="mr-2 h-4 w-4" />
+                                          <span>Transfer balance</span>
+                                      </DropdownMenuItem>
                                        <AlertDialog>
                                           <AlertDialogTrigger asChild>
                                               <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
@@ -509,6 +521,18 @@ export default function AccountsClient({ initialAccounts, categories, totals }: 
             />
           </DialogContent>
         </Dialog>
+      )}
+
+      {transferAccount && (
+        <TransferBalanceDialog
+          account={transferAccount}
+          open={!!transferAccount}
+          onOpenChange={(open) => !open && setTransferAccount(null)}
+          onSuccess={() => {
+            setTransferAccount(null);
+            router.refresh();
+          }}
+        />
       )}
 
     </div>

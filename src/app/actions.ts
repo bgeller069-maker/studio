@@ -1,9 +1,11 @@
 
 'use server';
 
+import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { addTransaction, addCategory, deleteTransaction, addAccount, deleteAccount, updateTransaction, updateTransactionHighlight, deleteMultipleAccounts, getBooks, addBook, updateBook, deleteBook, deleteCategory, updateAccount, deleteMultipleTransactions, restoreItem, deletePermanently, updateCategory, getNotes, addNote, updateNote, deleteNote, transferOpeningBalance, exportAllData } from '@/lib/data';
+import { addTransaction, addCategory, deleteTransaction, addAccount, deleteAccount, updateTransaction, updateTransactionHighlight, deleteMultipleAccounts, getBooks, addBook, updateBook, deleteBook, deleteCategory, updateAccount, deleteMultipleTransactions, restoreItem, deletePermanently, updateCategory, getNotes, addNote, updateNote, deleteNote, transferOpeningBalance, transferBalanceBetweenBooks, getAccounts, exportAllData } from '@/lib/data';
 import type { Transaction, Account, Note } from '@/lib/types';
+import { getSupabaseServerClient } from '@/lib/supabase';
 
 export async function createTransactionAction(bookId: string, data: Omit<Transaction, 'id' | 'date' | 'bookId'> & { date: Date }) {
   try {
@@ -292,6 +294,47 @@ export async function transferOpeningBalanceAction(params: {
   }
 }
 
+export async function getAccountsForBookAction(bookId: string) {
+  try {
+    const accounts = await getAccounts(bookId);
+    return { success: true as const, accounts: accounts.filter((a) => !a.id.startsWith('acc_opening_balance_equity_')) };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return { success: false as const, message: errorMessage, accounts: [] };
+  }
+}
+
+export async function transferBalanceToBookAction(params: {
+  sourceBookId: string;
+  targetBookId: string;
+  sourceAccountId: string;
+  sourceAccountName: string;
+  sourceCategoryId: string;
+  amount: number;
+  balanceType: 'debit' | 'credit';
+  targetAccountId?: string;
+}) {
+  try {
+    await transferBalanceBetweenBooks(
+      params.sourceBookId,
+      params.targetBookId,
+      params.sourceAccountId,
+      params.sourceAccountName,
+      params.sourceCategoryId,
+      params.amount,
+      params.balanceType,
+      params.targetAccountId,
+    );
+    revalidatePath('/accounts');
+    revalidatePath('/transactions');
+    revalidatePath('/');
+    return { success: true, message: 'Balance transferred successfully.' };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return { success: false, message: `Failed to transfer balance: ${errorMessage}` };
+  }
+}
+
 // --- Export Actions ---
 export async function exportAllDataAction() {
   try {
@@ -301,4 +344,12 @@ export async function exportAllDataAction() {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
     return { success: false, message: `Failed to export data: ${errorMessage}` };
   }
+}
+
+// --- Auth ---
+export async function signOutAction() {
+  const supabase = await getSupabaseServerClient();
+  await supabase.auth.signOut();
+  revalidatePath('/', 'layout');
+  redirect('/login');
 }

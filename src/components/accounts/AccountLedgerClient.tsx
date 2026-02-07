@@ -136,10 +136,27 @@ export default function AccountLedgerClient({ account, allLedgerEntries, categor
 
 
         document.body.appendChild(exportElement);
-        
+
+        // Style clone for full capture: off-screen, fixed wide width for horizontal ledger layout (fits A4 landscape)
+        exportElement.style.position = 'absolute';
+        exportElement.style.left = '-9999px';
+        exportElement.style.top = '0';
+        exportElement.style.overflow = 'visible';
+        exportElement.style.width = '1200px';
+        exportElement.style.minWidth = '1200px';
+        exportElement.style.backgroundColor = '#ffffff';
+
+        // Use scroll dimensions so the full layout is captured (no clipping of balance cards or table columns)
+        const w = exportElement.scrollWidth;
+        const h = exportElement.scrollHeight;
+
         const canvas = await html2canvas(exportElement, {
             scale: 2,
             useCORS: true,
+            width: w,
+            height: h,
+            windowWidth: w,
+            windowHeight: h,
         });
 
         document.body.removeChild(exportElement);
@@ -152,13 +169,21 @@ export default function AccountLedgerClient({ account, allLedgerEntries, categor
             link.click();
         } else if (format === 'pdf') {
             const imgData = canvas.toDataURL('image/png');
+            // A4 landscape so the wide ledger (cards + table columns) fits without clipping
             const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'px',
-                format: [canvas.width, canvas.height]
+                orientation: 'landscape',
+                unit: 'pt',
+                format: 'a4',
             });
-
-            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            // Scale image to fit one landscape page
+            const scale = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
+            const imgWidth = canvas.width * scale;
+            const imgHeight = canvas.height * scale;
+            const x = (pageWidth - imgWidth) / 2;
+            const y = (pageHeight - imgHeight) / 2;
+            pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
             pdf.save(`${account.name}_Ledger.pdf`);
         }
     });

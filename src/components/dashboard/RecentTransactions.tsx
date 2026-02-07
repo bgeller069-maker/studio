@@ -296,7 +296,7 @@ export default function RecentTransactions({ transactions: initialTransactions, 
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
               <h1 className="text-2xl font-headline">Transactions</h1>
-              <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-2">
                   <Button variant="outline" size="icon" asChild>
                       <Link href="/"><Scale /></Link>
                   </Button>
