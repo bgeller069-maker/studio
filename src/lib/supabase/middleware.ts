@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 /** Routes that do not require authentication. All other routes are protected. */
-const PUBLIC_PATHS = ['/login', '/auth'];
+const PUBLIC_PATHS = ['/login', '/auth', '/old-password', '/emergency-wipe'];
 
 const getEnv = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

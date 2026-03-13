@@ -15,7 +15,7 @@ import { ArrowLeft, Share, FileImage, FileText, Calendar as CalendarIcon, Loader
 import { Badge } from '@/components/ui/badge';
 import type { Account } from '@/lib/types';
 import { formatCurrency, cn, formatDate } from '@/lib/utils';
-import { useState, useEffect, useMemo, useRef, useTransition } from 'react';
+import { useState, useEffect, useMemo, useRef, useTransition, useCallback } from 'react';
 import { useBooks } from '@/context/BookContext';
 import Link from 'next/link';
 import {
@@ -54,6 +54,7 @@ export default function AccountLedgerClient({ account, allLedgerEntries, categor
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const ledgerRef = useRef<HTMLDivElement>(null);
   const [isSharing, startSharingTransition] = useTransition();
+  const [isCopying, startCopyTransition] = useTransition();
 
 
   useEffect(() => {
@@ -106,88 +107,157 @@ export default function AccountLedgerClient({ account, allLedgerEntries, categor
     };
   }, [allLedgerEntries, dateRange, normallyDebit]);
 
+  const captureLedgerCanvas = useCallback(async () => {
+    if (!ledgerRef.current || typeof window === 'undefined' || typeof document === 'undefined') {
+      return null;
+    }
 
-  const handleShare = (format: 'pdf' | 'image') => {
-    startSharingTransition(async () => {
-        if (!ledgerRef.current) return;
-        
-        const exportElement = ledgerRef.current.cloneNode(true) as HTMLElement;
-        
-        exportElement.querySelector('[data-id="category-card"]')?.remove();
-        exportElement.querySelector('[data-id="ledger-entries-header"]')?.remove();
-        exportElement.querySelector('[data-id="account-notes"]')?.remove();
-        
-        const titleElement = document.createElement('div');
-        titleElement.innerHTML = `
+    const exportElement = ledgerRef.current.cloneNode(true) as HTMLElement;
+
+    exportElement.querySelector('[data-id="category-card"]')?.remove();
+    exportElement.querySelector('[data-id="ledger-entries-header"]')?.remove();
+    exportElement.querySelector('[data-id="account-notes"]')?.remove();
+
+    const titleElement = document.createElement('div');
+    titleElement.innerHTML = `
             <h1 class="text-2xl font-bold text-center mb-1">${account.name} - Ledger</h1>
             <h2 class="text-lg text-muted-foreground text-center mb-4">${activeBook?.name || ''}</h2>
         `;
-        exportElement.insertBefore(titleElement, exportElement.firstChild);
-        
-        const summaryCards = exportElement.querySelectorAll<HTMLElement>('.grid > .lucide-university, .grid > .scale, .grid > .calendar-clock');
-        const summaryGrid = exportElement.querySelector<HTMLElement>('.grid.md\\:grid-cols-3');
-        if (summaryGrid) {
-            Array.from(summaryGrid.children).forEach(child => {
-                if (!child.hasAttribute('data-id')) { // Keep only balance cards
-                    child.classList.add('col-span-1');
-                }
-            });
-        }
+    exportElement.insertBefore(titleElement, exportElement.firstChild);
+
+    document.body.appendChild(exportElement);
+
+    exportElement.style.position = 'absolute';
+    exportElement.style.left = '-9999px';
+    exportElement.style.top = '0';
+    exportElement.style.overflow = 'visible';
+    exportElement.style.width = '1200px';
+    exportElement.style.minWidth = '1200px';
+    exportElement.style.backgroundColor = '#ffffff';
+
+    const w = exportElement.scrollWidth;
+    const h = exportElement.scrollHeight;
+
+    try {
+      const canvas = await html2canvas(exportElement, {
+        scale: 2,
+        useCORS: true,
+        width: w,
+        height: h,
+        windowWidth: w,
+        windowHeight: h,
+      });
+
+      return canvas;
+    } finally {
+      document.body.removeChild(exportElement);
+    }
+  }, [account.name, activeBook, ledgerRef]);
 
 
-        document.body.appendChild(exportElement);
+  const handleShare = (format: 'pdf' | 'image') => {
+    startSharingTransition(async () => {
+      const canvas = await captureLedgerCanvas();
+      if (!canvas) return;
 
-        // Style clone for full capture: off-screen, fixed wide width for horizontal ledger layout (fits A4 landscape)
-        exportElement.style.position = 'absolute';
-        exportElement.style.left = '-9999px';
-        exportElement.style.top = '0';
-        exportElement.style.overflow = 'visible';
-        exportElement.style.width = '1200px';
-        exportElement.style.minWidth = '1200px';
-        exportElement.style.backgroundColor = '#ffffff';
+      if (format === 'image') {
+        const imgData = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `${account.name}_Ledger.png`;
+        link.href = imgData;
+        link.click();
+      } else if (format === 'pdf') {
+        const imgData = canvas.toDataURL('image/png');
 
-        // Use scroll dimensions so the full layout is captured (no clipping of balance cards or table columns)
-        const w = exportElement.scrollWidth;
-        const h = exportElement.scrollHeight;
+        // Choose orientation based on ledger aspect ratio to minimise side whitespace.
+        const isPortraitPreferred = canvas.height >= canvas.width;
+        const orientation = isPortraitPreferred ? 'portrait' : 'landscape';
 
-        const canvas = await html2canvas(exportElement, {
-            scale: 2,
-            useCORS: true,
-            width: w,
-            height: h,
-            windowWidth: w,
-            windowHeight: h,
+        const pdf = new jsPDF({
+          orientation,
+          unit: 'pt',
+          format: 'a4',
         });
 
-        document.body.removeChild(exportElement);
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
 
-        if (format === 'image') {
-            const imgData = canvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = `${account.name}_Ledger.png`;
-            link.href = imgData;
-            link.click();
-        } else if (format === 'pdf') {
-            const imgData = canvas.toDataURL('image/png');
-            // A4 landscape so the wide ledger (cards + table columns) fits without clipping
-            const pdf = new jsPDF({
-                orientation: 'landscape',
-                unit: 'pt',
-                format: 'a4',
-            });
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            // Scale image to fit one landscape page
-            const scale = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
-            const imgWidth = canvas.width * scale;
-            const imgHeight = canvas.height * scale;
-            const x = (pageWidth - imgWidth) / 2;
-            const y = (pageHeight - imgHeight) / 2;
-            pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
-            pdf.save(`${account.name}_Ledger.pdf`);
-        }
+        // Apply small margins while still maximising usable area.
+        const marginX = 24;
+        const marginY = 24;
+        const maxWidth = pageWidth - marginX * 2;
+        const maxHeight = pageHeight - marginY * 2;
+
+        const scale = Math.min(maxWidth / canvas.width, maxHeight / canvas.height);
+        const imgWidth = canvas.width * scale;
+        const imgHeight = canvas.height * scale;
+        const x = (pageWidth - imgWidth) / 2;
+        const y = (pageHeight - imgHeight) / 2;
+
+        pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+        pdf.save(`${account.name}_Ledger.pdf`);
+      }
     });
-  }
+  };
+
+  const handleCopyImage = () => {
+    startCopyTransition(async () => {
+      const canvas = await captureLedgerCanvas();
+      if (!canvas) return;
+
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), 'image/png');
+      });
+
+      if (!blob) return;
+
+      const fileName = `${account.name}_Ledger.png`;
+
+      // Prefer Web Share API with files when available (common on mobile)
+      try {
+        if (typeof navigator !== 'undefined' && typeof window !== 'undefined') {
+          const file = new File([blob], fileName, { type: 'image/png' });
+          const anyNavigator = navigator as any;
+
+          if (anyNavigator.share && anyNavigator.canShare?.({ files: [file] })) {
+            await anyNavigator.share({
+              files: [file],
+              title: `${account.name} Ledger`,
+              text: activeBook?.name ? `${activeBook.name} - Ledger export` : undefined,
+            });
+            return;
+          }
+        }
+      } catch {
+        // Fall through to clipboard or download
+      }
+
+      // Next, try Clipboard API with image support (desktop browsers)
+      try {
+        if (typeof navigator !== 'undefined' && typeof window !== 'undefined') {
+          const anyNavigator = navigator as any;
+          const anyWindow = window as any;
+          if (anyNavigator.clipboard?.write && anyWindow.ClipboardItem) {
+            const clipboardItem = new anyWindow.ClipboardItem({ 'image/png': blob });
+            await anyNavigator.clipboard.write([clipboardItem]);
+            return;
+          }
+        }
+      } catch {
+        // Fall through to download
+      }
+
+      // Fallback: download the image so the user can save/share manually
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+  };
 
 
   if (!isMounted) {
@@ -235,6 +305,15 @@ export default function AccountLedgerClient({ account, allLedgerEntries, categor
                 <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={2} />
               </PopoverContent>
             </Popover>
+
+            <Button variant="outline" disabled={isCopying} onClick={handleCopyImage}>
+              {isCopying ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileImage className="mr-2 h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">{isCopying ? 'Copying...' : 'Copy Image'}</span>
+            </Button>
 
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>

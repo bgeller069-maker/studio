@@ -27,71 +27,66 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
-const loginSchema = z.object({
+const signupSchema = z.object({
   email: z.string().min(1, 'Email is required.').email('Enter a valid email.'),
-  password: z.string().min(1, 'Password is required.'),
+  password: z.string().min(6, 'Password must be at least 6 characters.'),
 });
 
-type LoginFormValues = z.infer<typeof loginSchema>;
+type SignupFormValues = z.infer<typeof signupSchema>;
 
-export default function LoginForm() {
+export default function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
   const redirectTo = searchParams.get('redirectTo');
-  const safeRedirect = redirectTo?.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/';
+  const safeRedirect =
+    redirectTo?.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/';
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
     defaultValues: {
       email: '',
       password: '',
     },
   });
 
-  async function onSubmit(values: LoginFormValues) {
+  async function onSubmit(values: SignupFormValues) {
     setIsPending(true);
     try {
       const supabase = getSupabaseBrowserClient();
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
       });
 
       if (error) {
         toast({
-          title: 'Sign in failed',
+          title: 'Sign up failed',
           description: error.message,
           variant: 'destructive',
         });
         return;
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (user?.id === '2da0bc7c-a8b3-405d-9e19-d6f05fd2bc56') {
-        if (typeof window !== 'undefined') {
-          window.location.href = '/old-password';
-        } else {
-          router.push('/old-password');
-          router.refresh();
-        }
+      // If email confirmation is disabled, Supabase may return an active session.
+      if (data.session) {
+        toast({
+          title: 'Account created',
+          description: 'You are now signed in.',
+        });
+        router.refresh();
+        router.push(safeRedirect);
         return;
       }
 
-      // Use a full redirect after login so that
-      // server components and middleware see the
-      // fresh Supabase session and can load data
-      // like books on the initial dashboard load.
-      if (typeof window !== 'undefined') {
-        window.location.href = safeRedirect;
-      } else {
-        router.push(safeRedirect);
-        router.refresh();
-      }
+      // Otherwise, ask the user to confirm their email and send them to login.
+      toast({
+        title: 'Check your email',
+        description:
+          'We sent you a confirmation link. Confirm your email, then sign in.',
+      });
+      router.push('/login');
     } catch {
       toast({
         title: 'Something went wrong',
@@ -106,9 +101,9 @@ export default function LoginForm() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-headline">Sign in</CardTitle>
+        <CardTitle className="text-2xl font-headline">Create an account</CardTitle>
         <CardDescription>
-          Enter your email and password to access your account.
+          Enter your email and a password to create your account.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -142,8 +137,8 @@ export default function LoginForm() {
                   <FormControl>
                     <Input
                       type="password"
-                      placeholder="••••••••"
-                      autoComplete="current-password"
+                      placeholder="At least 6 characters"
+                      autoComplete="new-password"
                       disabled={isPending}
                       {...field}
                     />
@@ -154,16 +149,19 @@ export default function LoginForm() {
             />
           </CardContent>
           <CardFooter className="flex flex-col gap-3">
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isPending}
-            >
-              {isPending ? 'Signing in...' : 'Sign in'}
+            <Button type="submit" className="w-full" disabled={isPending}>
+              {isPending ? 'Creating account...' : 'Create account'}
             </Button>
+            <p className="text-sm text-center text-muted-foreground">
+              Already have an account?{' '}
+              <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">
+                Sign in
+              </Link>
+            </p>
           </CardFooter>
         </form>
       </Form>
     </Card>
   );
 }
+

@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { getBooks } from '@/lib/data';
 import { BookProvider } from '@/context/BookContext';
 import BottomNav from '@/components/layout/BottomNav';
+import IdleLogoutGuard from '@/components/auth/IdleLogoutGuard';
 import { Inter, Playfair_Display } from 'next/font/google';
 
 const inter = Inter({
@@ -45,10 +46,12 @@ export default async function RootLayout({
       </head>
       <body className="font-body antialiased">
             <BookProvider initialBooks={initialBooks}>
-              <div className="pb-16 md:pb-0 min-h-screen">
-                {children}
-              </div>
-              <BottomNav />
+              <IdleLogoutGuard>
+                <div className="pb-16 md:pb-0 min-h-screen">
+                  {children}
+                </div>
+                <BottomNav />
+              </IdleLogoutGuard>
             </BookProvider>
             <Toaster />
       </body>

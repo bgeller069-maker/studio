@@ -5,11 +5,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Account, Book, Category, Note, Transaction, TransactionEntry } from '@/lib/types';
 import { getSupabaseServerClient } from '@/lib/supabase';
 
-const DEFAULT_BOOK_ID = 'book_default';
 const DEFAULT_BOOK_NAME = 'CASHBOOK';
 const EQUITY_CATEGORY_NAME = 'Equity';
 
-type DbBookRow = { id: string; name: string };
+type DbBookRow = { id: string; name: string; user_id?: string };
 type DbCategoryRow = { id: string; name: string; book_id: string };
 type DbAccountRow = {
   id: string;
@@ -36,7 +35,7 @@ type DbTransactionEntryRow = {
 };
 type DbTransactionWithEntries = DbTransactionRow & { entries: DbTransactionEntryRow[] | null };
 type DbNoteRow = { id: string; book_id: string; text: string; is_completed: boolean; created_at: string };
-type DbRecycleBinRow = { id: string; entity_id: string; entity_type: string; payload: any; deleted_at: string };
+type DbRecycleBinRow = { id: string; entity_id: string; entity_type: string; payload: any; deleted_at: string; user_id?: string };
 
 type BinItem = { id: string; type: 'transaction' | 'account' | 'category' | 'book'; deletedAt?: string; [key: string]: any };
 
@@ -75,12 +74,12 @@ const mapNote = (row: DbNoteRow): Note => ({
   createdAt: row.created_at,
 });
 
-const DEFAULT_CATEGORY_SEEDS: DbCategoryRow[] = [
-  { id: `cat_equity_${DEFAULT_BOOK_ID}`, name: EQUITY_CATEGORY_NAME, book_id: DEFAULT_BOOK_ID },
-  { id: 'cat_cash_default', name: 'Cash', book_id: DEFAULT_BOOK_ID },
-  { id: 'cat_capital_default', name: 'Capital', book_id: DEFAULT_BOOK_ID },
-  { id: 'cat_party_default', name: 'Parties', book_id: DEFAULT_BOOK_ID },
-  { id: 'cat_expense_default', name: 'Expenses', book_id: DEFAULT_BOOK_ID },
+const buildDefaultCategorySeeds = (bookId: string): DbCategoryRow[] => [
+  { id: `cat_equity_${bookId}`, name: EQUITY_CATEGORY_NAME, book_id: bookId },
+  { id: `cat_cash_${bookId}`, name: 'Cash', book_id: bookId },
+  { id: `cat_capital_${bookId}`, name: 'Capital', book_id: bookId },
+  { id: `cat_party_${bookId}`, name: 'Parties', book_id: bookId },
+  { id: `cat_expense_${bookId}`, name: 'Expenses', book_id: bookId },
 ];
 
 const handleError = (maybeError: any, context: string) => {
@@ -101,21 +100,42 @@ const handleError = (maybeError: any, context: string) => {
 
 const ensureDefaultBook = async (client?: SupabaseClient): Promise<void> => {
   const db = client ?? (await createClient());
+
+  const {
+    data: { user },
+    error: userError,
+  } = await db.auth.getUser();
+  // When there is no authenticated session (e.g. login page), silently skip
+  // creating a default book instead of treating it as an error.
+  if (userError || !user) {
+    return;
+  }
+
   const { data, error } = await db.from('books').select('id').limit(1);
   handleError(error, 'Failed to check books');
   if (data && data.length > 0) {
     return;
   }
 
-  const defaultBook: DbBookRow = { id: DEFAULT_BOOK_ID, name: DEFAULT_BOOK_NAME };
-  handleError(await db.from('books').insert(defaultBook), 'Failed to create default book');
-  handleError(await db.from('categories').insert(DEFAULT_CATEGORY_SEEDS), 'Failed to seed default categories');
+  const defaultBookId = generateId('book');
+  const defaultBook: DbBookRow = { id: defaultBookId, name: DEFAULT_BOOK_NAME, user_id: user.id };
+  const insertResult = await db.from('books').insert(defaultBook);
+  if (insertResult.error) {
+    // If we fail to create the default book (most likely due to RLS/permissions),
+    // log and exit silently so the app can still render and the user can create
+    // books through normal flows.
+    console.error('Failed to create default book', insertResult.error);
+    return;
+  }
+
+  const defaultCategories = buildDefaultCategorySeeds(defaultBookId);
+  handleError(await db.from('categories').insert(defaultCategories), 'Failed to seed default categories');
 
   const obeAccount: DbAccountRow = {
-    id: `acc_opening_balance_equity_${DEFAULT_BOOK_ID}`,
+    id: `acc_opening_balance_equity_${defaultBookId}`,
     name: 'Opening Balance Equity',
-    category_id: `cat_equity_${DEFAULT_BOOK_ID}`,
-    book_id: DEFAULT_BOOK_ID,
+    category_id: `cat_equity_${defaultBookId}`,
+    book_id: defaultBookId,
     opening_balance: null,
     opening_balance_type: null,
   };
@@ -165,18 +185,20 @@ const getOpeningBalanceEquityAccount = async (bookId: string): Promise<Account> 
   return mapAccount(newAccount);
 };
 
-const normalizeBinRow = (item: BinItem) => {
+const normalizeBinRow = (item: BinItem, userId: string) => {
   if (!item || !item.id || !item.type) {
     throw new Error('Recycle bin items must include an id and type.');
   }
   const deletedAt = item.deletedAt ?? new Date().toISOString();
-  return {
+  const base: DbRecycleBinRow = {
     id: generateId('bin'),
     entity_id: item.id,
     entity_type: item.type,
     payload: { ...item, deletedAt },
     deleted_at: deletedAt,
-  } satisfies DbRecycleBinRow;
+    user_id: userId,
+  };
+  return base satisfies DbRecycleBinRow;
 };
 
 // --- Recycle Bin Helpers ---
@@ -189,11 +211,20 @@ export const getRecycleBinItems = async (): Promise<any[]> => {
 
 export const addToRecycleBin = async (item: BinItem | BinItem[]): Promise<void> => {
   const client = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await client.auth.getUser();
+  handleError(userError, 'Failed to get current user for recycle bin');
+  if (!user) {
+    throw new Error('You must be signed in to modify the recycle bin.');
+  }
+
   const items = Array.isArray(item) ? item : [item];
   if (items.length === 0) {
     return;
   }
-  const rows = items.map(normalizeBinRow);
+  const rows = items.map((binItem) => normalizeBinRow(binItem, user.id));
   handleError(await client.from('recycle_bin').insert(rows), 'Failed to add items to recycle bin');
 };
 
@@ -294,6 +325,15 @@ export const addBook = async (name: string): Promise<Book> => {
   if (!trimmed) {
     throw new Error('Book name cannot be empty.');
   }
+  const {
+    data: { user },
+    error: userError,
+  } = await client.auth.getUser();
+  handleError(userError, 'Failed to get current user for book creation');
+  if (!user) {
+    throw new Error('You must be signed in to create a book.');
+  }
+
   const { data: existing, error: existingError } = await client
     .from('books')
     .select('id')
@@ -304,15 +344,16 @@ export const addBook = async (name: string): Promise<Book> => {
     throw new Error('A book with this name already exists.');
   }
 
-  const book: DbBookRow = { id: generateId('book'), name: trimmed };
+  const bookId = generateId('book');
+  const book: DbBookRow = { id: bookId, name: trimmed, user_id: user.id };
   handleError(await client.from('books').insert(book), 'Failed to create book');
 
   const equityCategory = await ensureEquityCategory(book.id, client);
   const obeAccount: DbAccountRow = {
-    id: `acc_opening_balance_equity_${book.id}`,
+    id: `acc_opening_balance_equity_${bookId}`,
     name: 'Opening Balance Equity',
     category_id: equityCategory.id,
-    book_id: book.id,
+    book_id: bookId,
     opening_balance: null,
     opening_balance_type: null,
   };
@@ -332,9 +373,6 @@ export const updateBook = async (id: string, name: string): Promise<Book> => {
 };
 
 export const deleteBook = async (id: string): Promise<void> => {
-  if (id === DEFAULT_BOOK_ID) {
-    throw new Error('Cannot delete the default book.');
-  }
   const client = await createClient();
   const { data: book, error: bookError } = await client.from('books').select('*').eq('id', id).maybeSingle();
   handleError(bookError, 'Failed to fetch book');
@@ -363,10 +401,6 @@ export const getCategories = async (bookId: string): Promise<Category[]> => {
   const client = await createClient();
   const { data, error } = await client.from('categories').select('*').eq('book_id', bookId).order('name');
   handleError(error, 'Failed to fetch categories');
-  if ((!data || data.length === 0) && bookId === DEFAULT_BOOK_ID) {
-    handleError(await client.from('categories').insert(DEFAULT_CATEGORY_SEEDS), 'Failed to seed default categories for book');
-    return DEFAULT_CATEGORY_SEEDS.map(mapCategory);
-  }
   return (data ?? []).map(mapCategory);
 };
 
@@ -1016,4 +1050,213 @@ export const exportAllData = async () => {
     recycleBin: recycleBinItems,
     exportedAt: new Date().toISOString(),
   };
+};
+
+type ExportedData = {
+  books: Book[];
+  categories: Category[];
+  accounts: Account[];
+  transactions: Transaction[];
+  notes: Note[];
+  recycleBin: any[];
+  exportedAt: string;
+};
+
+const validateExportedData = (payload: any): ExportedData => {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Uploaded JSON must be an object.');
+  }
+
+  const { books, categories, accounts, transactions, notes, recycleBin } = payload as Partial<ExportedData>;
+
+  if (!Array.isArray(books) || !Array.isArray(categories) || !Array.isArray(accounts) || !Array.isArray(transactions) || !Array.isArray(notes) || !Array.isArray(recycleBin)) {
+    throw new Error('Uploaded JSON does not match the expected export format.');
+  }
+
+  // Minimal shape checks to ensure this looks like our export.
+  for (const book of books) {
+    if (!book || typeof book.id !== 'string' || typeof book.name !== 'string') {
+      throw new Error('Uploaded JSON has invalid book records.');
+    }
+  }
+
+  for (const category of categories) {
+    if (!category || typeof category.id !== 'string' || typeof category.name !== 'string' || typeof (category as any).bookId !== 'string') {
+      throw new Error('Uploaded JSON has invalid category records.');
+    }
+  }
+
+  for (const account of accounts) {
+    if (!account || typeof account.id !== 'string' || typeof account.name !== 'string' || typeof (account as any).bookId !== 'string' || typeof (account as any).categoryId !== 'string') {
+      throw new Error('Uploaded JSON has invalid account records.');
+    }
+  }
+
+  for (const transaction of transactions) {
+    if (!transaction || typeof transaction.id !== 'string' || typeof (transaction as any).bookId !== 'string' || typeof (transaction as any).date !== 'string' || !Array.isArray((transaction as any).entries)) {
+      throw new Error('Uploaded JSON has invalid transaction records.');
+    }
+  }
+
+  for (const note of notes) {
+    if (!note || typeof note.id !== 'string' || typeof (note as any).bookId !== 'string' || typeof (note as any).text !== 'string') {
+      throw new Error('Uploaded JSON has invalid note records.');
+    }
+  }
+
+  return payload as ExportedData;
+};
+
+export const importAllData = async (payload: any): Promise<void> => {
+  const data = validateExportedData(payload);
+  const client = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await client.auth.getUser();
+  handleError(userError, 'Failed to get current user for import');
+  if (!user) {
+    throw new Error('You must be signed in to import data.');
+  }
+
+  // Fetch all existing books for this user (RLS should scope correctly).
+  const { data: existingBooks, error: existingBooksError } = await client.from('books').select('id');
+  handleError(existingBooksError, 'Failed to fetch existing books for import');
+  const existingBookIds = (existingBooks ?? []).map((b: any) => b.id as string);
+
+  // Clear existing data for these books in a FK-safe order.
+  if (existingBookIds.length > 0) {
+    const { data: existingTransactions, error: existingTransactionsError } = await client
+      .from('transactions')
+      .select('id')
+      .in('book_id', existingBookIds);
+    handleError(existingTransactionsError, 'Failed to fetch existing transactions for import');
+    const existingTransactionIds = (existingTransactions ?? []).map((t: any) => t.id as string);
+
+    if (existingTransactionIds.length > 0) {
+      handleError(
+        await client.from('transaction_entries').delete().in('transaction_id', existingTransactionIds),
+        'Failed to delete existing transaction entries for import',
+      );
+    }
+
+    handleError(
+      await client.from('transactions').delete().in('book_id', existingBookIds),
+      'Failed to delete existing transactions for import',
+    );
+
+    handleError(
+      await client.from('notes').delete().in('book_id', existingBookIds),
+      'Failed to delete existing notes for import',
+    );
+
+    handleError(
+      await client.from('accounts').delete().in('book_id', existingBookIds),
+      'Failed to delete existing accounts for import',
+    );
+
+    handleError(
+      await client.from('categories').delete().in('book_id', existingBookIds),
+      'Failed to delete existing categories for import',
+    );
+
+    handleError(
+      await client.from('books').delete().in('id', existingBookIds),
+      'Failed to delete existing books for import',
+    );
+
+    // Clear recycle bin items for this user only.
+    // Use an explicit predicate so Supabase/Postgres always sees a WHERE clause.
+    handleError(
+      await client.from('recycle_bin').delete().eq('user_id', user.id),
+      'Failed to clear recycle bin for import',
+    );
+  }
+
+  // Insert books
+  if (data.books.length > 0) {
+    const bookRows: DbBookRow[] = data.books.map((book) => ({
+      id: book.id,
+      name: book.name,
+      user_id: user.id,
+    }));
+    handleError(await client.from('books').insert(bookRows), 'Failed to insert books during import');
+  }
+
+  // Insert categories
+  if (data.categories.length > 0) {
+    const categoryRows: DbCategoryRow[] = data.categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      book_id: (category as any).bookId,
+    }));
+    handleError(await client.from('categories').insert(categoryRows), 'Failed to insert categories during import');
+  }
+
+  // Insert accounts
+  if (data.accounts.length > 0) {
+    const accountRows: DbAccountRow[] = data.accounts.map((account) => ({
+      id: account.id,
+      name: account.name,
+      category_id: account.categoryId,
+      book_id: account.bookId,
+      opening_balance: account.openingBalance ?? null,
+      opening_balance_type: account.openingBalanceType ?? null,
+    }));
+    handleError(await client.from('accounts').insert(accountRows), 'Failed to insert accounts during import');
+  }
+
+  // Insert transactions and entries
+  if (data.transactions.length > 0) {
+    const transactionRows: DbTransactionRow[] = data.transactions.map((transaction) => ({
+      id: transaction.id,
+      book_id: transaction.bookId,
+      date: transaction.date,
+      description: transaction.description,
+      highlight: transaction.highlight ?? null,
+    }));
+
+    const entryRows: DbTransactionEntryRow[] = [];
+    for (const transaction of data.transactions) {
+      for (const entry of transaction.entries) {
+        entryRows.push({
+          id: generateId('txn_entry'),
+          transaction_id: transaction.id,
+          account_id: entry.accountId,
+          amount: entry.amount,
+          type: entry.type,
+          description: entry.description ?? null,
+        });
+      }
+    }
+
+    if (transactionRows.length > 0) {
+      handleError(await client.from('transactions').insert(transactionRows), 'Failed to insert transactions during import');
+    }
+
+    if (entryRows.length > 0) {
+      handleError(
+        await client.from('transaction_entries').insert(entryRows),
+        'Failed to insert transaction entries during import',
+      );
+    }
+  }
+
+  // Insert notes
+  if (data.notes.length > 0) {
+    const noteRows: DbNoteRow[] = data.notes.map((note) => ({
+      id: note.id,
+      book_id: note.bookId,
+      text: note.text,
+      is_completed: note.isCompleted,
+      created_at: note.createdAt,
+    }));
+    handleError(await client.from('notes').insert(noteRows), 'Failed to insert notes during import');
+  }
+
+  // Insert recycle bin items (reuse existing helper to construct rows)
+  if (data.recycleBin.length > 0) {
+    await addToRecycleBin(data.recycleBin as BinItem[]);
+  }
 };

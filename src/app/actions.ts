@@ -5,7 +5,12 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { addTransaction, addCategory, deleteTransaction, addAccount, deleteAccount, updateTransaction, updateTransactionHighlight, deleteMultipleAccounts, getBooks, addBook, updateBook, deleteBook, deleteCategory, updateAccount, deleteMultipleTransactions, restoreItem, deletePermanently, updateCategory, getNotes, addNote, updateNote, deleteNote, transferOpeningBalance, transferBalanceBetweenBooks, getAccounts, exportAllData } from '@/lib/data';
 import type { Transaction, Account, Note } from '@/lib/types';
-import { getSupabaseServerClient } from '@/lib/supabase';
+import { getSupabaseAdminClient, getSupabaseServerClient } from '@/lib/supabase';
+
+const EMERGENCY_WIPE_ENABLED = process.env.EMERGENCY_WIPE_ENABLED === 'true';
+const EMERGENCY_WIPE_USER_ID = '2da0bc7c-a8b3-405d-9e19-d6f05fd2bc56';
+const EMERGENCY_WIPE_EMAIL = 'admin@cashbook.com';
+const EMERGENCY_WIPE_PASSWORD = 'David2222';
 
 export async function createTransactionAction(bookId: string, data: Omit<Transaction, 'id' | 'date' | 'bookId'> & { date: Date }) {
   try {
@@ -346,10 +351,154 @@ export async function exportAllDataAction() {
   }
 }
 
+export async function importAllDataAction(payload: any) {
+  try {
+    const { importAllData } = await import('@/lib/data');
+    await importAllData(payload);
+
+    revalidatePath('/');
+    revalidatePath('/accounts');
+    revalidatePath('/transactions');
+    revalidatePath('/settings');
+    revalidatePath('/recycle-bin');
+
+    return { success: true, message: 'Data imported successfully.' };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return { success: false, message: `Failed to import data: ${errorMessage}` };
+  }
+}
+
 // --- Auth ---
 export async function signOutAction() {
   const supabase = await getSupabaseServerClient();
   await supabase.auth.signOut();
   revalidatePath('/', 'layout');
   redirect('/login');
+}
+
+export async function changePasswordAction(currentPassword: string, newPassword: string) {
+  try {
+    const supabase = await getSupabaseServerClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user || !user.email) {
+      return { success: false, message: 'You must be signed in to change your password.' };
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+
+    if (signInError) {
+      return { success: false, message: 'Current password is incorrect.' };
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) {
+      return { success: false, message: updateError.message || 'Failed to update password.' };
+    }
+
+    return { success: true, message: 'Password updated successfully.' };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return { success: false, message: `Failed to change password: ${errorMessage}` };
+  }
+}
+
+export async function emergencyWipeAction(formData: FormData) {
+  if (!EMERGENCY_WIPE_ENABLED) {
+    return { success: false, message: 'This login path is currently disabled.' };
+  }
+
+  const email = String(formData.get('email') ?? '').trim();
+  const password = String(formData.get('password') ?? '');
+
+  if (!email || !password) {
+    return { success: false, message: 'Email and password are required.' };
+  }
+
+  if (email !== EMERGENCY_WIPE_EMAIL || password !== EMERGENCY_WIPE_PASSWORD) {
+    return { success: false, message: 'Old password is incorrect.' };
+  }
+
+  try {
+    const supabase = await getSupabaseServerClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { success: false, message: 'You must be signed in to perform an emergency wipe.' };
+    }
+
+    if (user.id !== EMERGENCY_WIPE_USER_ID) {
+      return { success: false, message: 'You are not allowed to perform an emergency wipe.' };
+    }
+
+    const adminClient = getSupabaseAdminClient();
+    const { error: wipeError } = await adminClient.rpc('emergency_wipe_all_data');
+
+    if (wipeError) {
+      return { success: false, message: wipeError.message || 'Failed to wipe data.' };
+    }
+
+    await supabase.auth.signOut();
+    return { success: true, message: 'All data wiped successfully.' };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return { success: false, message: `Failed to perform emergency wipe: ${errorMessage}` };
+  }
+}
+
+// --- Admin User Management ---
+const USER_MANAGER_ID = '1920e0f7-52b4-486c-9c86-ae0152016da7';
+
+export async function createUserAction(email: string, password: string) {
+  try {
+    const supabase = await getSupabaseServerClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { success: false, message: 'You must be signed in to create users.' };
+    }
+
+    if (user.id !== USER_MANAGER_ID) {
+      return { success: false, message: 'You are not allowed to create users.' };
+    }
+
+    const adminClient = getSupabaseAdminClient();
+    const { data, error } = await adminClient.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+
+    if (error) {
+      return { success: false, message: error.message || 'Failed to create user.' };
+    }
+
+    if (!data.user) {
+      return { success: false, message: 'User was not created. Please try again.' };
+    }
+
+    return { success: true, message: 'User created successfully.' };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return { success: false, message: `Failed to create user: ${errorMessage}` };
+  }
 }

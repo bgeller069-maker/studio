@@ -34,7 +34,7 @@ type JsonTransaction = {
 type JsonNote = { id: string; bookId: string; text: string; isCompleted: boolean; createdAt: string };
 type JsonRecycleBinItem = { id: string; type: string; deletedAt?: string; [key: string]: any };
 
-type DbBookRow = { id: string; name: string };
+type DbBookRow = { id: string; name: string; user_id: string };
 type DbCategoryRow = { id: string; name: string; book_id: string };
 type DbAccountRow = {
   id: string;
@@ -72,6 +72,7 @@ type DbRecycleBinRow = {
   entity_type: string;
   payload: any;
   deleted_at: string;
+  user_id: string;
 };
 
 type MigrationSummary = {
@@ -259,7 +260,12 @@ const loadData = async () => {
 
   validateTransactions(transactions);
 
-  const bookRows: DbBookRow[] = books.map((book) => ({ id: book.id, name: book.name }));
+  const migrationUserId = process.env.MIGRATION_USER_ID;
+  if (!migrationUserId) {
+    throw new Error('MIGRATION_USER_ID must be set to an auth.users.id before running this script.');
+  }
+
+  const bookRows: DbBookRow[] = books.map((book) => ({ id: book.id, name: book.name, user_id: migrationUserId }));
   const categoryDedupe = dedupeBy(categories, (category) => `${category.bookId}:${category.name.toLowerCase()}`);
   if (categoryDedupe.duplicates.length > 0) {
     console.warn(`⚠️  Deduped ${categoryDedupe.duplicates.length} categories with duplicate names per book.`);
@@ -319,6 +325,7 @@ const loadData = async () => {
       entity_type: item.type,
       payload: { ...item, deletedAt },
       deleted_at: deletedAt,
+      user_id: migrationUserId,
     };
   });
 
