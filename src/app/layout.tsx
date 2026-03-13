@@ -47,10 +47,12 @@ export default async function RootLayout({
       <body className="font-body antialiased">
             <BookProvider initialBooks={initialBooks}>
               <IdleLogoutGuard>
-                <div className="pb-16 md:pb-0 min-h-screen">
-                  {children}
+                <div className="min-h-screen flex flex-col">
+                  <div className="flex-1 pb-16 md:pb-0">
+                    {children}
+                  </div>
+                  <BottomNav />
                 </div>
-                <BottomNav />
               </IdleLogoutGuard>
             </BookProvider>
             <Toaster />

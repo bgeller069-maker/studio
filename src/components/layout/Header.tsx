@@ -93,6 +93,20 @@ export default function Header({ accounts = [], categories = [], backHref }: Hea
                 </Button>
               </div>
 
+              {/* Mobile Menu */}
+              <div className="flex md:hidden items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  title="Sign out"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="sr-only">Sign out</span>
+                </Button>
+              </div>
+
               {!isDashboard && (
                 <Button onClick={() => setAddTxSheetOpen(true)} className="hidden md:inline-flex">
                   <PlusCircle className="mr-2 h-4 w-4" />
